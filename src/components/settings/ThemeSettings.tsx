@@ -1,15 +1,17 @@
-import { Check } from "lucide-react";
-import { ReminderCardView } from "@/components/reminder/ReminderCardView";
+import { useRef, useState } from "react";
+import { Check, ImageUp, Trash2 } from "lucide-react";
 import { ThemePreview } from "@/components/settings/ThemePreview";
-import { formatTimer } from "@/lib/format";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { useSettings } from "@/lib/appState";
 import { THEMES, type ThemeMeta } from "@/lib/themes";
-import type { Settings } from "@/lib/types";
 import { cn } from "@/lib/utils";
-
-interface ThemeSettingsProps {
-  settings: Settings;
-  onChange: (patch: Partial<Settings>) => void;
-}
 
 function ThemeCard({
   theme,
@@ -55,7 +57,42 @@ function ThemeCard({
   );
 }
 
-export function ThemeSettings({ settings, onChange }: ThemeSettingsProps) {
+export function ThemeSettings() {
+  const {
+    settings,
+    update,
+    customBackground,
+    uploadBackground,
+    removeBackground,
+  } = useSettings();
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function upload(file: File) {
+    setError(null);
+    setBusy(true);
+    try {
+      await uploadBackground(file);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove() {
+    setError(null);
+    setBusy(true);
+    try {
+      await removeBackground();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
@@ -73,43 +110,71 @@ export function ThemeSettings({ settings, onChange }: ThemeSettingsProps) {
             key={theme.id}
             theme={theme}
             active={settings.theme === theme.id}
-            onSelect={() => onChange({ theme: theme.id })}
+            onSelect={() => update({ theme: theme.id })}
           />
         ))}
       </div>
 
-      <div className="glass-panel rounded-[22px] p-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h2 className="text-sm font-semibold">Preview</h2>
-            <p className="text-xs text-muted-foreground">
-              This is how your break card will look.
-            </p>
-          </div>
-          <span className="rounded-full border border-border/70 bg-background/30 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            {settings.theme}
-          </span>
-        </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Break card background</CardTitle>
+          <CardDescription>
+            Your image replaces the theme scene on the break card.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap items-center gap-3">
+            {customBackground ? (
+              <img
+                src={customBackground}
+                alt="Break card background"
+                className="h-[84px] w-[168px] rounded-[12px] border border-border/60 object-cover"
+              />
+            ) : (
+              <div className="grid h-[84px] w-[168px] place-items-center rounded-[12px] border border-dashed border-border/60 bg-black/10 text-[11px] text-muted-foreground">
+                No image
+              </div>
+            )}
 
-        <div className="mt-4 flex justify-center rounded-[18px] border border-border/60 bg-black/10 p-5">
-          <div className="h-[200px] w-full max-w-[390px]">
-            <ReminderCardView
-              label="Micro break"
-              title="Time for a break"
-              time={formatTimer(settings.microbreak_duration_sec)}
-              progress={1}
-              theme={settings.theme}
-              showCountdown={settings.show_countdown}
-              allowSnooze={settings.allow_snooze}
-              showStop={settings.show_stop}
-              onSnooze={() => {}}
-              onPause={() => {}}
-              onStop={() => {}}
-              onClose={() => {}}
-            />
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={busy}
+                onClick={() => fileInput.current?.click()}
+              >
+                <ImageUp />
+                {customBackground ? "Replace" : "Upload image"}
+              </Button>
+              {customBackground ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => void remove()}
+                >
+                  <Trash2 />
+                  Remove
+                </Button>
+              ) : null}
+            </div>
           </div>
-        </div>
-      </div>
+
+          {error ? <p className="text-xs text-destructive">{error}</p> : null}
+
+          <input
+            ref={fileInput}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = "";
+              if (file) void upload(file);
+            }}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }

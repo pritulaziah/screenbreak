@@ -1,3 +1,4 @@
+mod custom_background;
 mod scheduler;
 mod settings;
 mod tray;
@@ -10,8 +11,7 @@ use std::time::{Duration, SystemTime};
 use tauri::{AppHandle, Emitter, Manager, WindowEvent};
 use tray::{setup_tray, update_tray};
 use windows::{
-    create_reminder_window, hide_reminder, show_main, show_reminder, update_reminder_position,
-    update_reminder_size,
+    create_reminder_window, hide_reminder, show_main, show_reminder, update_reminder_window,
 };
 
 fn mutate_and_broadcast(
@@ -37,6 +37,24 @@ fn get_state(state: tauri::State<Mutex<Scheduler>>) -> Snapshot {
 }
 
 #[tauri::command]
+fn save_custom_background(app: AppHandle, data: String) -> Result<String, String> {
+    let path = custom_background::save(&app, &data)?;
+    let _ = app.emit("custom-background:update", Some(path.clone()));
+    Ok(path)
+}
+
+#[tauri::command]
+fn get_custom_background(app: AppHandle) -> Option<String> {
+    custom_background::current(&app)
+}
+
+#[tauri::command]
+fn remove_custom_background(app: AppHandle) {
+    custom_background::remove(&app);
+    let _ = app.emit("custom-background:update", Option::<String>::None);
+}
+
+#[tauri::command]
 fn update_settings(
     app: AppHandle,
     state: tauri::State<Mutex<Scheduler>>,
@@ -44,8 +62,7 @@ fn update_settings(
 ) -> Snapshot {
     let settings = settings.sanitize();
     save_settings(&app, &settings);
-    update_reminder_size(&app, &settings.notification_size);
-    update_reminder_position(&app, &settings.position);
+    update_reminder_window(&app, &settings);
 
     mutate_and_broadcast(&app, state.inner(), |scheduler| {
         scheduler.update_settings(settings);
@@ -56,8 +73,7 @@ fn update_settings(
 fn reset_settings(app: AppHandle, state: tauri::State<Mutex<Scheduler>>) -> Snapshot {
     let settings = Settings::default();
     save_settings(&app, &settings);
-    update_reminder_size(&app, &settings.notification_size);
-    update_reminder_position(&app, &settings.position);
+    update_reminder_window(&app, &settings);
 
     mutate_and_broadcast(&app, state.inner(), |scheduler| {
         scheduler.update_settings(settings);
@@ -91,11 +107,6 @@ fn toggle_pause(app: AppHandle, state: tauri::State<Mutex<Scheduler>>) -> Snapsh
 #[tauri::command]
 fn show_now(app: AppHandle, state: tauri::State<Mutex<Scheduler>>) -> Snapshot {
     mutate_and_broadcast(&app, state.inner(), |scheduler| scheduler.show_now())
-}
-
-#[tauri::command]
-fn quit_app(app: AppHandle) {
-    app.exit(0);
 }
 
 pub(crate) fn toggle_pause_from_tray(app: &AppHandle) {
@@ -159,25 +170,22 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
-                if window.label() == "main" {
-                    window.app_handle().exit(0);
-                }
-                if window.label() == "reminder" {
-                    api.prevent_close();
-                    let _ = window.hide();
-                }
+                api.prevent_close();
+                let _ = window.hide();
             }
         })
         .invoke_handler(tauri::generate_handler![
             get_state,
+            save_custom_background,
+            get_custom_background,
+            remove_custom_background,
             update_settings,
             snooze,
             end_break,
             toggle_break_pause,
             toggle_pause,
             show_now,
-            reset_settings,
-            quit_app
+            reset_settings
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

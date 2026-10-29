@@ -1,5 +1,6 @@
 import {
   Bell,
+  Eye,
   Monitor,
   Palette,
   Settings2,
@@ -7,11 +8,10 @@ import {
   Volume2,
   type LucideIcon,
 } from "lucide-react";
-import { getThemeMeta } from "@/lib/themes";
-import type { Phase, ThemeId } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export type SettingsTab =
+  | "preview"
   | "break"
   | "themes"
   | "notifications"
@@ -24,6 +24,7 @@ export const SETTINGS_TABS: {
   label: string;
   icon: LucideIcon;
 }[] = [
+  { id: "preview", label: "Preview", icon: Eye },
   { id: "break", label: "Break", icon: Timer },
   { id: "themes", label: "Themes", icon: Palette },
   { id: "notifications", label: "Notifications", icon: Bell },
@@ -35,26 +36,12 @@ export const SETTINGS_TABS: {
 interface SettingsSidebarProps {
   tab: SettingsTab;
   onTabChange: (tab: SettingsTab) => void;
-  theme: ThemeId;
-  paused: boolean;
-  phase: Phase;
 }
 
 export function SettingsSidebar({
   tab,
   onTabChange,
-  theme,
-  paused,
-  phase,
 }: SettingsSidebarProps) {
-  const meta = getThemeMeta(theme);
-
-  const status = paused
-    ? "Paused"
-    : phase === "break"
-      ? "On a break"
-      : "Active";
-
   return (
     <aside className="flex w-[228px] shrink-0 flex-col border-r border-sidebar-border/70 bg-sidebar/45 backdrop-blur-xl">
       <div className="px-4 pb-2 pt-5">
@@ -95,21 +82,6 @@ export function SettingsSidebar({
           );
         })}
       </nav>
-
-      <div className="border-t border-sidebar-border/60 px-4 py-3">
-        <div className="flex items-center gap-2 text-[11px] font-medium text-muted-foreground">
-          <span
-            className={cn(
-              "size-1.5 rounded-full",
-              paused ? "bg-muted-foreground" : "bg-primary",
-            )}
-          />
-          {status}
-        </div>
-        <p className="mt-1 text-[10px] text-muted-foreground/60">
-          v0.1.0 · {meta.name}
-        </p>
-      </div>
     </aside>
   );
 }

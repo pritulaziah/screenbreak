@@ -11,6 +11,7 @@ export type Position =
   | "bottom-center"
   | "bottom-right";
 export type NotificationSize = "compact" | "normal" | "large";
+export type CardOrientation = "horizontal" | "vertical";
 export type SoundTone = "chime" | "bell" | "soft";
 export type Phase = "idle" | "break";
 export type BreakKind = "micro" | "long";
@@ -27,6 +28,7 @@ export interface Settings {
   sound_volume: number;
   position: Position;
   notification_size: NotificationSize;
+  card_orientation: CardOrientation;
   show_countdown: boolean;
   allow_snooze: boolean;
   show_stop: boolean;

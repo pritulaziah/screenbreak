@@ -11,15 +11,13 @@ import {
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { useSettings } from "@/lib/appState";
 import { playChime } from "@/lib/sound";
-import type { Settings, SoundTone } from "@/lib/types";
+import type { SoundTone } from "@/lib/types";
 
-interface SoundSettingsProps {
-  settings: Settings;
-  onChange: (patch: Partial<Settings>) => void;
-}
+export function SoundSettings() {
+  const { settings, update } = useSettings();
 
-export function SoundSettings({ settings, onChange }: SoundSettingsProps) {
   return (
     <Card>
       <CardHeader>
@@ -37,7 +35,7 @@ export function SoundSettings({ settings, onChange }: SoundSettingsProps) {
           <Switch
             aria-label="Sound notification"
             checked={settings.sound}
-            onCheckedChange={(sound) => onChange({ sound })}
+            onCheckedChange={(sound) => update({ sound })}
           />
         </div>
 
@@ -51,7 +49,7 @@ export function SoundSettings({ settings, onChange }: SoundSettingsProps) {
                 value={settings.sound_tone}
                 aria-label="Tone"
                 onChange={(event) =>
-                  onChange({ sound_tone: event.target.value as SoundTone })
+                  update({ sound_tone: event.target.value as SoundTone })
                 }
                 disabled={!settings.sound}
                 className="select-field w-full"
@@ -85,7 +83,7 @@ export function SoundSettings({ settings, onChange }: SoundSettingsProps) {
           max={100}
           step={5}
           format={(value) => `${value}%`}
-          onCommit={(sound_volume) => onChange({ sound_volume })}
+          onCommit={(sound_volume) => update({ sound_volume })}
           disabled={!settings.sound}
         />
       </CardContent>

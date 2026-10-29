@@ -1,5 +1,4 @@
 import { Clock, Square, Timer } from "lucide-react";
-import { NotificationPreview } from "@/components/settings/NotificationPreview";
 import {
   Card,
   CardContent,
@@ -9,12 +8,7 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import type { Settings } from "@/lib/types";
-
-interface NotificationSettingsProps {
-  settings: Settings;
-  onChange: (patch: Partial<Settings>) => void;
-}
+import { useSettings } from "@/lib/appState";
 
 interface SettingSwitchProps {
   label: string;
@@ -53,10 +47,9 @@ function SettingSwitch({
   );
 }
 
-export function NotificationSettings({
-  settings,
-  onChange,
-}: NotificationSettingsProps) {
+export function NotificationSettings() {
+  const { settings, update } = useSettings();
+
   return (
     <div className="space-y-4">
       <Card>
@@ -72,7 +65,7 @@ export function NotificationSettings({
             label="Show countdown"
             description="Show the time left and a progress bar."
             checked={settings.show_countdown}
-            onChange={(show_countdown) => onChange({ show_countdown })}
+            onChange={(show_countdown) => update({ show_countdown })}
           />
           <Separator />
           <SettingSwitch
@@ -80,7 +73,7 @@ export function NotificationSettings({
             label="Allow snooze"
             description="Offer 5, 15, 30, and 60 minute delays."
             checked={settings.allow_snooze}
-            onChange={(allow_snooze) => onChange({ allow_snooze })}
+            onChange={(allow_snooze) => update({ allow_snooze })}
           />
           <Separator />
           <SettingSwitch
@@ -88,12 +81,10 @@ export function NotificationSettings({
             label="Show stop button"
             description="Keep the Stop button during a break."
             checked={settings.show_stop}
-            onChange={(show_stop) => onChange({ show_stop })}
+            onChange={(show_stop) => update({ show_stop })}
           />
         </CardContent>
       </Card>
-
-      <NotificationPreview settings={settings} />
     </div>
   );
 }

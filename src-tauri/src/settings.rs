@@ -17,6 +17,7 @@ pub struct Settings {
     pub sound_volume: u64,
     pub position: String,
     pub notification_size: String,
+    pub card_orientation: String,
     pub show_countdown: bool,
     pub allow_snooze: bool,
     pub show_stop: bool,
@@ -36,6 +37,7 @@ impl Default for Settings {
             sound_volume: 60,
             position: "bottom-right".into(),
             notification_size: "normal".into(),
+            card_orientation: "horizontal".into(),
             show_countdown: true,
             allow_snooze: true,
             show_stop: true,
@@ -68,11 +70,18 @@ impl Settings {
             _ => "bottom-right".into(),
         };
 
+        if self.notification_size == "tall" {
+            self.notification_size = "normal".into();
+            self.card_orientation = "vertical".into();
+        }
         if !matches!(
             self.notification_size.as_str(),
             "compact" | "normal" | "large"
         ) {
             self.notification_size = "normal".into();
+        }
+        if !matches!(self.card_orientation.as_str(), "horizontal" | "vertical") {
+            self.card_orientation = "horizontal".into();
         }
         if !matches!(self.sound_tone.as_str(), "chime" | "bell" | "soft") {
             self.sound_tone = "chime".into();
