@@ -35,6 +35,36 @@ Build the installer:
 npm run tauri build
 ```
 
+## Release
+
+The app version is in `package.json`. `src-tauri/tauri.conf.json` reads the version from that file. The version in `src-tauri/Cargo.toml` is the Rust crate version. Do not change it at release.
+
+1. The working tree must be clean.
+2. Run `npm version X.Y.Z`. The command updates `package.json` and `package-lock.json`, creates a commit, and creates the tag `vX.Y.Z`.
+3. Run `git push --follow-tags`.
+
+The tag starts the release workflow. The workflow stops if the tag and the `package.json` version differ.
+
+Review the `ScreenBreak vX.Y.Z` draft release and publish it.
+
+## Download
+
+Open the [Releases page](https://github.com/pritulaziah/screenbreak/releases) and download `ScreenBreak_X.Y.Z_x64-setup.exe`. Replace `X.Y.Z` with the release version.
+
+The repository is private. You need Read access to open the Releases page.
+
+The installer runs without administrator rights.
+
+## SmartScreen
+
+The installer is not signed, so Windows shows "Unknown publisher". Choose "More info", then "Run anyway".
+
+## Uninstall
+
+1. Open Settings → Apps → Installed apps on Windows 11, or Settings → Apps → Apps & features on Windows 10.
+2. Find ScreenBreak.
+3. Choose Uninstall.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
