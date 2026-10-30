@@ -187,6 +187,8 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             show_main(app);
         }))
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
             let settings = load_settings(app.handle());
             app.manage(Mutex::new(Scheduler::new(settings.clone())));

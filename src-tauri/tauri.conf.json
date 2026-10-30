@@ -36,6 +36,7 @@
   "bundle": {
     "active": true,
     "targets": ["nsis"],
+    "createUpdaterArtifacts": true,
     "publisher": "pritulaziah",
     "copyright": "Copyright © 2026 pritulaziah",
     "category": "Productivity",
@@ -52,6 +53,14 @@
       "nsis": {
         "installMode": "currentUser"
       }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDU2NjUxRDc4NTNFQUQwM0EKUldRNjBPcFRlQjFsVm5hQTJxMi9lckEwNU8xaWZ4MzY5ZXlqUnNqSy9NMDFXU2N3c1grZnl2V3MK",
+      "endpoints": [
+        "https://github.com/pritulaziah/screenbreak/releases/latest/download/latest.json"
+      ]
     }
   }
 }

@@ -84,7 +84,9 @@ test("passes the draft release inputs", () => {
     "releaseName: ScreenBreak ${{ github.ref_name }}",
     "releaseDraft: true",
     "generateReleaseNotes: true",
-    "uploadUpdaterJson: false",
+    "uploadUpdaterJson: true",
+    "secrets.TAURI_SIGNING_PRIVATE_KEY",
+    "secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD",
   ]) {
     assert.ok(
       workflow.includes(expected),
