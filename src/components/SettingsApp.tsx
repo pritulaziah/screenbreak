@@ -23,7 +23,7 @@ const TAB_DESCRIPTIONS: Record<SettingsTab, string> = {
   notifications: "Decide what the reminder card shows.",
   appearance: "Place the card where you want it.",
   sounds: "Play a soft signal when a break starts.",
-  advanced: "Reset all settings to defaults.",
+  advanced: "Manage updates and reset settings.",
 };
 
 export function SettingsApp() {
