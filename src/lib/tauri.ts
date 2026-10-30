@@ -5,16 +5,28 @@ export function getState() {
   return invoke<SchedulerSnapshot>("get_state");
 }
 
-export function getCustomBackground() {
-  return invoke<string | null>("get_custom_background");
+export function getCustomBackgrounds() {
+  return invoke<string[]>("get_custom_backgrounds");
 }
 
 export function saveCustomBackground(data: string) {
-  return invoke<string>("save_custom_background", { data });
+  return invoke<string[]>("save_custom_background", { data });
 }
 
-export function removeCustomBackground() {
-  return invoke<void>("remove_custom_background");
+export function removeCustomBackground(path?: string) {
+  return invoke<string[]>("remove_custom_background", { path: path ?? null });
+}
+
+export function reorderCustomBackgrounds(paths: string[]) {
+  return invoke<string[]>("reorder_custom_backgrounds", { paths });
+}
+
+export function replaceCustomBackground(path: string, data: string) {
+  return invoke<string[]>("replace_custom_background", { path, data });
+}
+
+export function downloadCustomBackground(path: string) {
+  return invoke<string>("download_custom_background", { path });
 }
 
 export function updateSettings(settings: Settings) {

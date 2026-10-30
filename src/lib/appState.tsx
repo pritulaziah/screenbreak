@@ -10,10 +10,13 @@ import {
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import {
+  downloadCustomBackground,
   endBreak as endBreakCommand,
-  getCustomBackground,
+  getCustomBackgrounds,
   getState,
   removeCustomBackground,
+  reorderCustomBackgrounds,
+  replaceCustomBackground,
   resetSettings,
   saveCustomBackground,
   showNow as showNowCommand,
@@ -22,15 +25,14 @@ import {
   togglePause as togglePauseCommand,
   updateSettings,
 } from "./tauri";
+import { MAX_IMAGE_BYTES } from "./background";
 import { applyTheme } from "./theme";
-import type { SchedulerSnapshot, Settings } from "./types";
-
-const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+import type { CustomBackground, SchedulerSnapshot, Settings } from "./types";
 
 interface AppStateValue {
   settings: Settings | null;
   snapshot: SchedulerSnapshot | null;
-  customBackground: string | null;
+  customBackgrounds: CustomBackground[];
   error: string | null;
   update: (patch: Partial<Settings>) => void;
   reset: () => Promise<void>;
@@ -39,8 +41,11 @@ interface AppStateValue {
   snooze: (minutes: number) => Promise<void>;
   endBreak: () => Promise<void>;
   toggleBreakPause: () => Promise<void>;
-  uploadBackground: (file: File) => Promise<void>;
-  removeBackground: () => Promise<void>;
+  uploadBackgrounds: (files: File[]) => Promise<void>;
+  removeBackground: (path?: string) => Promise<void>;
+  reorderBackgrounds: (paths: string[]) => Promise<void>;
+  replaceBackground: (path: string, file: File) => Promise<void>;
+  downloadBackground: (path: string) => Promise<string>;
 }
 
 const AppStateContext = createContext<AppStateValue | null>(null);
@@ -54,10 +59,16 @@ function readFile(file: File) {
   });
 }
 
+function toCustomBackgrounds(paths: string[]): CustomBackground[] {
+  return paths.map((path) => ({ path, url: convertFileSrc(path) }));
+}
+
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [snapshot, setSnapshot] = useState<SchedulerSnapshot | null>(null);
-  const [customBackground, setCustomBackground] = useState<string | null>(null);
+  const [customBackgrounds, setCustomBackgrounds] = useState<CustomBackground[]>(
+    [],
+  );
   const [error, setError] = useState<string | null>(null);
   const settingsRef = useRef<Settings | null>(null);
 
@@ -80,10 +91,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         }
       });
 
-    getCustomBackground()
-      .then((path) => {
+    getCustomBackgrounds()
+      .then((paths) => {
         if (!disposed) {
-          setCustomBackground(path ? convertFileSrc(path) : null);
+          setCustomBackgrounds(toCustomBackgrounds(paths));
         }
       })
       .catch((reason) => console.error(reason));
@@ -95,11 +106,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       else stopScheduler = stop;
     });
 
-    listen<string | null>("custom-background:update", (event) => {
+    listen<string[]>("custom-background:update", (event) => {
       if (!disposed) {
-        setCustomBackground(
-          event.payload ? convertFileSrc(event.payload) : null,
-        );
+        setCustomBackgrounds(toCustomBackgrounds(event.payload));
       }
     }).then((stop) => {
       if (disposed) stop();
@@ -193,19 +202,41 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const uploadBackground = useCallback(async (file: File) => {
-    if (file.size > MAX_IMAGE_BYTES) {
-      throw new Error("The image is larger than 8 MB.");
+  const uploadBackgrounds = useCallback(async (files: File[]) => {
+    if (files.length === 0) return;
+
+    if (files.some((file) => file.size > MAX_IMAGE_BYTES)) {
+      throw new Error("The image is larger than 25 MB.");
     }
 
-    const data = await readFile(file);
-    const path = await saveCustomBackground(data);
-    setCustomBackground(convertFileSrc(path));
+    let paths: string[] = [];
+    for (const file of files) {
+      paths = await saveCustomBackground(await readFile(file));
+    }
+    setCustomBackgrounds(toCustomBackgrounds(paths));
   }, []);
 
-  const removeBackground = useCallback(async () => {
-    await removeCustomBackground();
-    setCustomBackground(null);
+  const removeBackground = useCallback(async (path?: string) => {
+    const paths = await removeCustomBackground(path);
+    setCustomBackgrounds(toCustomBackgrounds(paths));
+  }, []);
+
+  const reorderBackgrounds = useCallback(async (paths: string[]) => {
+    const next = await reorderCustomBackgrounds(paths);
+    setCustomBackgrounds(toCustomBackgrounds(next));
+  }, []);
+
+  const replaceBackground = useCallback(async (path: string, file: File) => {
+    if (file.size > MAX_IMAGE_BYTES) {
+      throw new Error("The image is larger than 25 MB.");
+    }
+
+    const paths = await replaceCustomBackground(path, await readFile(file));
+    setCustomBackgrounds(toCustomBackgrounds(paths));
+  }, []);
+
+  const downloadBackground = useCallback((path: string) => {
+    return downloadCustomBackground(path);
   }, []);
 
   return (
@@ -213,7 +244,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       value={{
         settings,
         snapshot,
-        customBackground,
+        customBackgrounds,
         error,
         update,
         reset,
@@ -222,8 +253,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         snooze,
         endBreak,
         toggleBreakPause,
-        uploadBackground,
+        uploadBackgrounds,
         removeBackground,
+        reorderBackgrounds,
+        replaceBackground,
+        downloadBackground,
       }}
     >
       {children}

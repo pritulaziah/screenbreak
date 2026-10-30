@@ -21,6 +21,7 @@ pub struct Settings {
     pub show_countdown: bool,
     pub allow_snooze: bool,
     pub show_stop: bool,
+    pub background_random: bool,
 }
 
 impl Default for Settings {
@@ -41,6 +42,7 @@ impl Default for Settings {
             show_countdown: true,
             allow_snooze: true,
             show_stop: true,
+            background_random: false,
         }
     }
 }

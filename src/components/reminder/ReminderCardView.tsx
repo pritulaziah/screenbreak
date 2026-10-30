@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Clock, Pause, Play, Square, X } from "lucide-react";
 import { BreakArt } from "@/components/art/BreakArt";
 import { useAppState } from "@/lib/appState";
+import { pickBackgroundIndex } from "@/lib/background";
 import { getThemeMeta } from "@/lib/themes";
 import type { CardOrientation, ThemeId } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -45,6 +46,8 @@ export interface ReminderCardViewProps {
   label: string;
   time: string;
   progress: number;
+  backgroundIndex: number;
+  randomBackground: boolean;
   theme: ThemeId;
   orientation?: CardOrientation;
   showCountdown: boolean;
@@ -63,6 +66,8 @@ export function ReminderCardView({
   label,
   time,
   progress,
+  backgroundIndex,
+  randomBackground,
   theme,
   orientation = "horizontal",
   showCountdown,
@@ -79,9 +84,19 @@ export function ReminderCardView({
   const meta = getThemeMeta(theme);
   const Icon = meta.icon;
   const [snoozeOpen, setSnoozeOpen] = useState(initialSnoozeOpen);
-  const { customBackground } = useAppState();
+  const { customBackgrounds } = useAppState();
   const progressValue = Math.max(0, Math.min(1, progress)) * 100;
   const vertical = orientation === "vertical";
+  const background =
+    customBackgrounds.length > 0
+      ? customBackgrounds[
+          pickBackgroundIndex(
+            backgroundIndex,
+            customBackgrounds.length,
+            randomBackground,
+          )
+        ]
+      : null;
 
   const countdown = showCountdown ? (
     <>
@@ -153,9 +168,9 @@ export function ReminderCardView({
         className,
       )}
     >
-      {customBackground ? (
+      {background ? (
         <img
-          src={customBackground}
+          src={background.url}
           alt=""
           className="absolute inset-0 h-full w-full object-cover"
         />

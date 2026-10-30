@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ReminderCardView } from "@/components/reminder/ReminderCardView";
 import { Segmented } from "@/components/ui/segmented";
+import { useAppState } from "@/lib/appState";
 import { formatTimer } from "@/lib/format";
 import type { Settings } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -12,6 +13,7 @@ interface NotificationPreviewProps {
 type PreviewMode = "break" | "snooze";
 
 export function NotificationPreview({ settings }: NotificationPreviewProps) {
+  const { snapshot } = useAppState();
   const [mode, setMode] = useState<PreviewMode>("break");
   const time = formatTimer(settings.microbreak_duration_sec);
   const vertical = settings.card_orientation === "vertical";
@@ -48,6 +50,8 @@ export function NotificationPreview({ settings }: NotificationPreviewProps) {
             label="Micro break"
             time={time}
             progress={1}
+            backgroundIndex={snapshot?.breaks_done ?? 0}
+            randomBackground={settings.background_random}
             theme={settings.theme}
             orientation={settings.card_orientation}
             showCountdown={settings.show_countdown}

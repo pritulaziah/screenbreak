@@ -21,6 +21,8 @@ export function ReminderCard() {
       label={label}
       time={formatTimer(snapshot.remaining)}
       progress={progress}
+      backgroundIndex={snapshot.breaks_done}
+      randomBackground={snapshot.settings.background_random}
       theme={snapshot.settings.theme}
       orientation={snapshot.settings.card_orientation}
       showCountdown={snapshot.settings.show_countdown}

@@ -32,6 +32,12 @@ export interface Settings {
   show_countdown: boolean;
   allow_snooze: boolean;
   show_stop: boolean;
+  background_random: boolean;
+}
+
+export interface CustomBackground {
+  path: string;
+  url: string;
 }
 
 export interface SchedulerSnapshot {

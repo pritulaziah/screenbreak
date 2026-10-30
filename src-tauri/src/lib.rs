@@ -37,21 +37,48 @@ fn get_state(state: tauri::State<Mutex<Scheduler>>) -> Snapshot {
 }
 
 #[tauri::command]
-fn save_custom_background(app: AppHandle, data: String) -> Result<String, String> {
-    let path = custom_background::save(&app, &data)?;
-    let _ = app.emit("custom-background:update", Some(path.clone()));
-    Ok(path)
+fn save_custom_background(app: AppHandle, data: String) -> Result<Vec<String>, String> {
+    custom_background::save(&app, &data)?;
+    let paths = custom_background::list(&app);
+    let _ = app.emit("custom-background:update", &paths);
+    Ok(paths)
 }
 
 #[tauri::command]
-fn get_custom_background(app: AppHandle) -> Option<String> {
-    custom_background::current(&app)
+fn get_custom_backgrounds(app: AppHandle) -> Vec<String> {
+    custom_background::list(&app)
 }
 
 #[tauri::command]
-fn remove_custom_background(app: AppHandle) {
-    custom_background::remove(&app);
-    let _ = app.emit("custom-background:update", Option::<String>::None);
+fn remove_custom_background(app: AppHandle, path: Option<String>) -> Vec<String> {
+    custom_background::remove(&app, path.as_deref());
+    let paths = custom_background::list(&app);
+    let _ = app.emit("custom-background:update", &paths);
+    paths
+}
+
+#[tauri::command]
+fn reorder_custom_backgrounds(app: AppHandle, paths: Vec<String>) -> Vec<String> {
+    let paths = custom_background::reorder(&app, &paths);
+    let _ = app.emit("custom-background:update", &paths);
+    paths
+}
+
+#[tauri::command]
+fn replace_custom_background(
+    app: AppHandle,
+    path: String,
+    data: String,
+) -> Result<Vec<String>, String> {
+    custom_background::replace(&app, &path, &data)?;
+    let paths = custom_background::list(&app);
+    let _ = app.emit("custom-background:update", &paths);
+    Ok(paths)
+}
+
+#[tauri::command]
+fn download_custom_background(app: AppHandle, path: String) -> Result<String, String> {
+    custom_background::download(&app, &path)
 }
 
 #[tauri::command]
@@ -177,8 +204,11 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_state,
             save_custom_background,
-            get_custom_background,
+            get_custom_backgrounds,
             remove_custom_background,
+            reorder_custom_backgrounds,
+            replace_custom_background,
+            download_custom_background,
             update_settings,
             snooze,
             end_break,
