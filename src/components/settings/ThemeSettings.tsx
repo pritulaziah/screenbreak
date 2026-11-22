@@ -1,6 +1,14 @@
-import { Check } from "lucide-react";
+import { Check, Moon, Sun } from "lucide-react";
 import { BackgroundSettings } from "@/components/settings/BackgroundSettings";
 import { ThemePreview } from "@/components/settings/ThemePreview";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Segmented } from "@/components/ui/segmented";
 import { useSettings } from "@/lib/appState";
 import { THEMES, type ThemeMeta } from "@/lib/themes";
 import { cn } from "@/lib/utils";
@@ -54,9 +62,27 @@ export function ThemeSettings() {
 
   return (
     <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Color mode</CardTitle>
+          <CardDescription>Light or dark app colors.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Segmented
+            value={settings.appearance}
+            onChange={(appearance) => update({ appearance })}
+            options={[
+              { value: "light", label: "Light", icon: Sun },
+              { value: "dark", label: "Dark", icon: Moon },
+            ]}
+            className="w-full"
+          />
+        </CardContent>
+      </Card>
+
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs text-muted-foreground">
-          Every scene comes with light and dark app colors.
+          Choose a scene for your breaks.
         </p>
         <span className="text-[11px] text-muted-foreground/70">
           {THEMES.length} scenes

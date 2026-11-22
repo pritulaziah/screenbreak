@@ -1,9 +1,8 @@
 import {
-  Bell,
-  Eye,
-  Monitor,
+  AppWindow,
+  Info,
+  LayoutDashboard,
   Palette,
-  Settings2,
   Timer,
   Volume2,
   type LucideIcon,
@@ -11,26 +10,24 @@ import {
 import { cn } from "@/lib/utils";
 
 export type SettingsTab =
-  | "preview"
-  | "break"
+  | "overview"
+  | "schedule"
+  | "card"
   | "themes"
-  | "notifications"
-  | "appearance"
-  | "sounds"
-  | "advanced";
+  | "sound"
+  | "about";
 
 export const SETTINGS_TABS: {
   id: SettingsTab;
   label: string;
   icon: LucideIcon;
 }[] = [
-  { id: "preview", label: "Preview", icon: Eye },
-  { id: "break", label: "Break", icon: Timer },
+  { id: "overview", label: "Overview", icon: LayoutDashboard },
+  { id: "schedule", label: "Schedule", icon: Timer },
+  { id: "card", label: "Card", icon: AppWindow },
   { id: "themes", label: "Themes", icon: Palette },
-  { id: "notifications", label: "Notifications", icon: Bell },
-  { id: "appearance", label: "Appearance", icon: Monitor },
-  { id: "sounds", label: "Sounds", icon: Volume2 },
-  { id: "advanced", label: "Advanced", icon: Settings2 },
+  { id: "sound", label: "Sound", icon: Volume2 },
+  { id: "about", label: "About", icon: Info },
 ];
 
 interface SettingsSidebarProps {

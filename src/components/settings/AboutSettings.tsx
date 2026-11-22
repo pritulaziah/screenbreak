@@ -107,7 +107,7 @@ function UpdatesCard() {
   );
 }
 
-export function AdvancedSettings() {
+export function AboutSettings() {
   const { reset } = useSettings();
 
   return (

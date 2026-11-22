@@ -2,11 +2,10 @@ import { useState, type MouseEvent } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { BreakArt } from "@/components/art/BreakArt";
 import { TitleBar } from "@/components/TitleBar";
-import { AdvancedSettings } from "@/components/settings/AdvancedSettings";
-import { AppearanceSettings } from "@/components/settings/AppearanceSettings";
-import { BreakSettings } from "@/components/settings/BreakSettings";
-import { NotificationSettings } from "@/components/settings/NotificationSettings";
-import { PreviewSettings } from "@/components/settings/PreviewSettings";
+import { AboutSettings } from "@/components/settings/AboutSettings";
+import { CardSettings } from "@/components/settings/CardSettings";
+import { OverviewSettings } from "@/components/settings/OverviewSettings";
+import { ScheduleSettings } from "@/components/settings/ScheduleSettings";
 import {
   SettingsSidebar,
   SETTINGS_TABS,
@@ -17,18 +16,17 @@ import { ThemeSettings } from "@/components/settings/ThemeSettings";
 import { useAppState } from "@/lib/appState";
 
 const TAB_DESCRIPTIONS: Record<SettingsTab, string> = {
-  preview: "Your current state and schedule.",
-  break: "Choose how often breaks appear and how long they last.",
+  overview: "Your current state and schedule.",
+  schedule: "Choose how often breaks appear and how long they last.",
+  card: "Choose what the reminder card shows and where it appears.",
   themes: "Choose the atmosphere for your breaks.",
-  notifications: "Decide what the reminder card shows.",
-  appearance: "Place the card where you want it.",
-  sounds: "Play a soft signal when a break starts.",
-  advanced: "Manage updates and reset settings.",
+  sound: "Play a soft signal when a break starts.",
+  about: "Version, updates, and reset.",
 };
 
 export function SettingsApp() {
   const { settings, error } = useAppState();
-  const [tab, setTab] = useState<SettingsTab>("preview");
+  const [tab, setTab] = useState<SettingsTab>("overview");
 
   function handleResize(event: MouseEvent<HTMLButtonElement>) {
     event.preventDefault();
@@ -96,13 +94,12 @@ export function SettingsApp() {
           </header>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-7 pb-8">
-            {tab === "preview" ? <PreviewSettings /> : null}
-            {tab === "break" ? <BreakSettings /> : null}
+            {tab === "overview" ? <OverviewSettings /> : null}
+            {tab === "schedule" ? <ScheduleSettings /> : null}
+            {tab === "card" ? <CardSettings /> : null}
             {tab === "themes" ? <ThemeSettings /> : null}
-            {tab === "notifications" ? <NotificationSettings /> : null}
-            {tab === "appearance" ? <AppearanceSettings /> : null}
-            {tab === "sounds" ? <SoundSettings /> : null}
-            {tab === "advanced" ? <AdvancedSettings /> : null}
+            {tab === "sound" ? <SoundSettings /> : null}
+            {tab === "about" ? <AboutSettings /> : null}
           </div>
         </main>
       </div>

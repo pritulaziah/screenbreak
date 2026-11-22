@@ -47,44 +47,42 @@ function SettingSwitch({
   );
 }
 
-export function NotificationSettings() {
+export function CardContentSettings() {
   const { settings, update } = useSettings();
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Card</CardTitle>
-          <CardDescription>
-            Choose what to show on the reminder card.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <SettingSwitch
-            icon={Timer}
-            label="Show countdown"
-            description="Show the time left and a progress bar."
-            checked={settings.show_countdown}
-            onChange={(show_countdown) => update({ show_countdown })}
-          />
-          <Separator />
-          <SettingSwitch
-            icon={Clock}
-            label="Allow snooze"
-            description="Offer 5, 15, 30, and 60 minute delays."
-            checked={settings.allow_snooze}
-            onChange={(allow_snooze) => update({ allow_snooze })}
-          />
-          <Separator />
-          <SettingSwitch
-            icon={Square}
-            label="Show stop button"
-            description="Keep the Stop button during a break."
-            checked={settings.show_stop}
-            onChange={(show_stop) => update({ show_stop })}
-          />
-        </CardContent>
-      </Card>
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Contents</CardTitle>
+        <CardDescription>
+          Choose what to show on the reminder card.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <SettingSwitch
+          icon={Timer}
+          label="Show countdown"
+          description="Show the time left and a progress bar."
+          checked={settings.show_countdown}
+          onChange={(show_countdown) => update({ show_countdown })}
+        />
+        <Separator />
+        <SettingSwitch
+          icon={Clock}
+          label="Allow snooze"
+          description="Offer 5, 15, 30, and 60 minute delays."
+          checked={settings.allow_snooze}
+          onChange={(allow_snooze) => update({ allow_snooze })}
+        />
+        <Separator />
+        <SettingSwitch
+          icon={Square}
+          label="Show stop button"
+          description="Keep the Stop button during a break."
+          checked={settings.show_stop}
+          onChange={(show_stop) => update({ show_stop })}
+        />
+      </CardContent>
+    </Card>
   );
 }

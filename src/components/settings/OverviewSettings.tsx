@@ -2,7 +2,7 @@ import { NotificationPreview } from "@/components/settings/NotificationPreview";
 import { StatusCard } from "@/components/settings/StatusCard";
 import { useSettings } from "@/lib/appState";
 
-export function PreviewSettings() {
+export function OverviewSettings() {
   const { settings, snapshot, togglePause, showNow } = useSettings();
 
   return (

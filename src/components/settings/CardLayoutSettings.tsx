@@ -1,4 +1,3 @@
-import { Moon, Sun } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -23,7 +22,7 @@ const POSITIONS: { value: Position; label: string }[] = [
   { value: "bottom-right", label: "Bottom right" },
 ];
 
-export function AppearanceSettings() {
+export function CardLayoutSettings() {
   const { settings, update } = useSettings();
   const currentPosition = POSITIONS.find(
     (position) => position.value === settings.position,
@@ -31,24 +30,6 @@ export function AppearanceSettings() {
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Color mode</CardTitle>
-          <CardDescription>Light or dark app colors.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Segmented
-            value={settings.appearance}
-            onChange={(appearance) => update({ appearance })}
-            options={[
-              { value: "light", label: "Light", icon: Sun },
-              { value: "dark", label: "Dark", icon: Moon },
-            ]}
-            className="w-full"
-          />
-        </CardContent>
-      </Card>
-
       <Card>
         <CardHeader>
           <CardTitle>Card size</CardTitle>
