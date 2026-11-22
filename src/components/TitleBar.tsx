@@ -1,8 +1,17 @@
-import { Minus, Sparkles, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Copy, Minus, Sparkles, Square, X } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
 interface TitleBarProps {
   section: string;
+}
+
+function currentWindow() {
+  try {
+    return getCurrentWindow();
+  } catch {
+    return null;
+  }
 }
 
 function run(action: () => Promise<void>) {
@@ -10,13 +19,43 @@ function run(action: () => Promise<void>) {
 }
 
 export function TitleBar({ section }: TitleBarProps) {
-  const appWindow = (() => {
-    try {
-      return getCurrentWindow();
-    } catch {
-      return null;
-    }
-  })();
+  const [maximized, setMaximized] = useState(false);
+
+  useEffect(() => {
+    const appWindow = currentWindow();
+    if (!appWindow) return;
+
+    let active = true;
+    let unlisten: (() => void) | undefined;
+
+    const sync = () => {
+      void appWindow
+        .isMaximized()
+        .then((value) => {
+          if (active) setMaximized(value);
+        })
+        .catch(() => {});
+    };
+
+    sync();
+    void appWindow
+      .onResized(sync)
+      .then((stop) => {
+        if (active) unlisten = stop;
+        else stop();
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+      unlisten?.();
+    };
+  }, []);
+
+  function handleMaximize() {
+    const appWindow = currentWindow();
+    if (appWindow) run(() => appWindow.toggleMaximize());
+  }
 
   return (
     <header
@@ -58,17 +97,36 @@ export function TitleBar({ section }: TitleBarProps) {
           type="button"
           aria-label="Minimize"
           title="Minimize"
-          onClick={() => appWindow && run(() => appWindow.minimize())}
+          onClick={() => {
+            const appWindow = currentWindow();
+            if (appWindow) run(() => appWindow.minimize());
+          }}
           className="titlebar-button"
         >
           <Minus className="size-3.5" />
         </button>
         <button
           type="button"
+          aria-label={maximized ? "Restore" : "Maximize"}
+          title={maximized ? "Restore" : "Maximize"}
+          onClick={handleMaximize}
+          className="titlebar-button"
+        >
+          {maximized ? (
+            <Copy className="size-3.5" />
+          ) : (
+            <Square className="size-3.5" />
+          )}
+        </button>
+        <button
+          type="button"
           aria-label="Close"
           title="Close"
           data-close="true"
-          onClick={() => appWindow && run(() => appWindow.close())}
+          onClick={() => {
+            const appWindow = currentWindow();
+            if (appWindow) run(() => appWindow.close());
+          }}
           className="titlebar-button"
         >
           <X className="size-3.5" />
