@@ -8,15 +8,15 @@ ScreenBreak helps you take short breaks while you work at the computer. A card a
 
 A micro break lasts 20 seconds and repeats every 10 minutes. Every third break is long and lasts 5 minutes.
 
-The app runs in the system tray. The tray menu opens the settings, pauses the schedule for one hour, skips a break, and quits the app.
+The app runs in the system tray. The tray menu opens the settings, starts a
+break, pauses the schedule for one hour, skips a break, and quits the app.
 
 ## Features
 
 - A reminder card that does not block the screen.
 - Micro breaks and long breaks with editable intervals and lengths.
 - Three themes: Cozy, Night, and Nature. Each theme has light and dark colors.
-- Settings for break, themes, notifications, appearance, sounds, and
-  advanced options.
+- Settings for the schedule, break card, appearance, sound, and app updates.
 - A break card with a live countdown and snooze options.
 - System tray menu: open settings, pause, skip, and quit.
 - Settings are saved between launches.
@@ -79,9 +79,9 @@ update available.
 
 ## Updates
 
-ScreenBreak checks for updates after the settings window starts. The Advanced
-settings page also has a manual check. When a new version is available, a
-banner offers to install it. The app restarts after the installation.
+ScreenBreak checks for updates after the settings window starts. The About
+page also has a manual check. When a new version is available, a banner offers
+to install it. The app restarts after the installation.
 
 Updates work from the first version that includes the updater. Install that
 version manually. Later versions update in place. The updater reads

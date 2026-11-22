@@ -4,7 +4,6 @@ import { BreakArt } from "@/components/art/BreakArt";
 import { TitleBar } from "@/components/TitleBar";
 import { AboutSettings } from "@/components/settings/AboutSettings";
 import { CardSettings } from "@/components/settings/CardSettings";
-import { OverviewSettings } from "@/components/settings/OverviewSettings";
 import { ScheduleSettings } from "@/components/settings/ScheduleSettings";
 import {
   SettingsSidebar,
@@ -16,17 +15,16 @@ import { ThemeSettings } from "@/components/settings/ThemeSettings";
 import { useAppState } from "@/lib/appState";
 
 const TAB_DESCRIPTIONS: Record<SettingsTab, string> = {
-  overview: "Your current state and schedule.",
   schedule: "Choose how often breaks appear and how long they last.",
-  card: "Choose what the reminder card shows and where it appears.",
-  themes: "Choose the atmosphere for your breaks.",
-  sound: "Play a soft signal when a break starts.",
-  about: "Version, updates, and reset.",
+  card: "Choose the break card layout and controls.",
+  themes: "Choose colors and backgrounds.",
+  sound: "Play a sound when a break starts.",
+  about: "App version, updates, and default settings.",
 };
 
 export function SettingsApp() {
   const { settings, error } = useAppState();
-  const [tab, setTab] = useState<SettingsTab>("overview");
+  const [tab, setTab] = useState<SettingsTab>("schedule");
 
   function handleResize(event: MouseEvent<HTMLButtonElement>) {
     event.preventDefault();
@@ -78,13 +76,10 @@ export function SettingsApp() {
       <div className="relative z-10 flex min-h-0 flex-1">
         <SettingsSidebar tab={tab} onTabChange={setTab} />
 
-        <main className="flex min-w-0 flex-1 flex-col">
-          <header className="flex items-start justify-between gap-4 px-7 pb-5 pt-6">
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <header className="shrink-0 px-5 pb-5 pt-6 min-[900px]:px-7">
             <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground/70">
-                Settings
-              </p>
-              <h1 className="mt-1 text-[26px] font-semibold tracking-tight">
+              <h1 className="text-[26px] font-semibold tracking-tight">
                 {activeTab.label}
               </h1>
               <p className="mt-1 max-w-md text-sm text-muted-foreground">
@@ -93,8 +88,7 @@ export function SettingsApp() {
             </div>
           </header>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-7 pb-8">
-            {tab === "overview" ? <OverviewSettings /> : null}
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5 min-[900px]:px-7 min-[900px]:pb-7">
             {tab === "schedule" ? <ScheduleSettings /> : null}
             {tab === "card" ? <CardSettings /> : null}
             {tab === "themes" ? <ThemeSettings /> : null}

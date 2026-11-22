@@ -1,9 +1,10 @@
-import { Download, Loader2, RefreshCw } from "lucide-react";
+import { useState } from "react";
+import { Download, Loader2, RefreshCw, RotateCcw } from "lucide-react";
+import { ResetSettingsDialog } from "@/components/settings/ResetSettingsDialog";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -45,7 +46,6 @@ function UpdatesCard() {
     <Card>
       <CardHeader>
         <CardTitle>Updates</CardTitle>
-        <CardDescription>Keep ScreenBreak up to date.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -109,25 +109,52 @@ function UpdatesCard() {
 
 export function AboutSettings() {
   const { reset } = useSettings();
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetStatus, setResetStatus] = useState<string | null>(null);
 
   return (
     <div className="space-y-4">
       <UpdatesCard />
 
-      <Card>
+      <Card className="mt-6">
         <CardHeader>
-          <CardTitle>Reset</CardTitle>
-          <CardDescription>Restore the default settings.</CardDescription>
+          <CardTitle>Default settings</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-wrap items-center justify-between gap-3">
-          <p className="max-w-md text-sm text-muted-foreground">
-            Theme, schedule, sound, and appearance return to defaults.
-          </p>
-          <Button variant="outline" size="sm" onClick={() => void reset()}>
-            Reset settings
-          </Button>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="max-w-sm text-sm text-muted-foreground">
+              Restore all settings to their defaults. Uploaded backgrounds are
+              kept.
+            </p>
+            <Button
+              variant="destructive-outline"
+              size="sm"
+              onClick={() => {
+                setResetStatus(null);
+                setResetOpen(true);
+              }}
+            >
+              <RotateCcw />
+              Reset all settings…
+            </Button>
+          </div>
+          {resetStatus ? (
+            <p role="status" className="text-xs text-muted-foreground">
+              {resetStatus}
+            </p>
+          ) : null}
         </CardContent>
       </Card>
+
+      {resetOpen ? (
+        <ResetSettingsDialog
+          onClose={() => setResetOpen(false)}
+          onConfirm={async () => {
+            await reset();
+            setResetStatus("Settings reset to defaults.");
+          }}
+        />
+      ) : null}
     </div>
   );
 }

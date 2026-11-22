@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -21,15 +20,14 @@ export function SoundSettings() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Sound</CardTitle>
-        <CardDescription>A short signal when a break starts.</CardDescription>
+        <CardTitle>Break alert</CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-sm font-medium">Sound notification</p>
             <p className="text-xs text-muted-foreground">
-              Play a soft chime with the card.
+              Play the selected tone with the break card.
             </p>
           </div>
           <Switch

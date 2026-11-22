@@ -16,6 +16,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -42,7 +43,7 @@ function MenuItem({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs font-medium transition-colors",
+        "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
         destructive
           ? "text-destructive hover:bg-destructive/10"
           : "text-foreground hover:bg-foreground/8",
@@ -314,30 +315,12 @@ export function BackgroundSettings() {
 
   return (
     <Card>
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <CardTitle>Break card background</CardTitle>
-          <CardDescription className="mt-1">
-            Your images replace the theme scene on the break card. Add your own
-            images below.
-          </CardDescription>
-        </div>
-
-        <label
-          htmlFor="background-random"
-          className="flex shrink-0 items-center gap-2 text-xs font-medium"
-        >
-          <span>Random order</span>
-          <Switch
-            id="background-random"
-            aria-label="Random order"
-            checked={settings.background_random}
-            onCheckedChange={(background_random) =>
-              update({ background_random })
-            }
-          />
-        </label>
-      </div>
+      <CardHeader>
+        <CardTitle>Break card backgrounds</CardTitle>
+        <CardDescription>
+          Uploaded images replace the theme background on the break card.
+        </CardDescription>
+      </CardHeader>
 
       <CardContent
         className="space-y-3"
@@ -346,8 +329,29 @@ export function BackgroundSettings() {
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
+        <div className="flex items-center justify-between gap-4 pb-2">
+          <label htmlFor="background-random" className="min-w-0">
+            <span className="block text-sm font-medium">Random order</span>
+            <span
+              id="background-random-description"
+              className="block text-xs leading-relaxed text-muted-foreground"
+            >
+              Choose images at random instead of using the gallery order.
+            </span>
+          </label>
+          <Switch
+            id="background-random"
+            aria-label="Random order"
+            aria-describedby="background-random-description"
+            checked={settings.background_random}
+            onCheckedChange={(background_random) =>
+              update({ background_random })
+            }
+          />
+        </div>
+
         {customBackgrounds.length > 0 ? (
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 min-[900px]:grid-cols-3">
             {customBackgrounds.map((background) => (
               <div
                 key={background.path}
@@ -370,7 +374,7 @@ export function BackgroundSettings() {
                     onClick={() => setPreview(background)}
                     aria-label="Preview image"
                     title="Open preview"
-                    className="block h-full w-full cursor-zoom-in"
+                    className="block h-full w-full cursor-zoom-in focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-ring/50"
                   >
                     <img
                       src={background.url}
@@ -402,7 +406,7 @@ export function BackgroundSettings() {
                     aria-label="Image actions"
                     aria-expanded={menuFor === background.path}
                     title="Image actions"
-                    className="absolute right-1.5 top-1.5 grid size-7 place-items-center rounded-full border border-white/25 bg-black/55 text-white/90 backdrop-blur-sm transition-colors hover:bg-black/75"
+                    className="absolute right-1.5 top-1.5 grid size-7 place-items-center rounded-full border border-white/25 bg-black/55 text-white/90 backdrop-blur-sm transition-colors hover:bg-black/75 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
                   >
                     <MoreHorizontal className="size-4" />
                   </button>
@@ -463,18 +467,17 @@ export function BackgroundSettings() {
             setAddOpen(true);
           }}
           className={cn(
-            "flex min-h-[112px] w-full flex-col items-center justify-center gap-1.5 rounded-[16px] border border-dashed px-4 py-4 text-center transition-colors",
+            "flex min-h-[112px] w-full flex-col items-center justify-center gap-1.5 rounded-[16px] border border-dashed px-4 py-4 text-center transition-colors disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
             dragging
               ? "border-primary bg-primary/10"
               : "border-border/70 bg-black/5 hover:border-foreground/30 hover:bg-black/10",
-            busy && "opacity-60",
           )}
         >
           <span className="grid size-8 place-items-center rounded-full border border-border/60 bg-background/50 text-muted-foreground">
             <Plus className="size-4" />
           </span>
           <span className="text-sm font-medium">Add image</span>
-          <span className="text-[11px] text-muted-foreground/80">
+          <span className="text-xs text-muted-foreground">
             PNG, JPEG, WEBP · up to 25 MB
           </span>
         </button>

@@ -38,13 +38,15 @@ export function Segmented<T extends string>({
             aria-pressed={active}
             onClick={() => onChange(option.value)}
             className={cn(
-              "inline-flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-[10px] px-2.5 py-1.5 text-xs font-semibold transition-all",
+              "inline-flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-[10px] px-2.5 py-1.5 text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
               active
-                ? "bg-foreground/10 text-foreground shadow-sm ring-1 ring-foreground/10"
+                ? "bg-primary/12 text-foreground shadow-sm ring-1 ring-primary/35"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
-            {Icon ? <Icon className="size-3.5" /> : null}
+            {Icon ? (
+              <Icon className={cn("size-3.5", active && "text-primary")} />
+            ) : null}
             {option.label}
           </button>
         );

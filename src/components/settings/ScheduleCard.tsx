@@ -5,7 +5,6 @@ import {
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -74,39 +73,42 @@ export function ScheduleCard({ settings, onChange }: ScheduleCardProps) {
     <Card>
       <CardHeader>
         <CardTitle>Intervals</CardTitle>
-        <CardDescription>
-          Choose how often breaks appear and how long they last.
-        </CardDescription>
       </CardHeader>
       <CardContent className="divide-y divide-border/60">
-        <SelectField
-          label="Remind me every"
-          hint="Time between reminders."
-          value={settings.microbreak_interval_min}
-          options={intervals}
-          onChange={(value) => onChange({ microbreak_interval_min: value })}
-        />
-        <SelectField
-          label="Micro break length"
-          hint="A short pause for your eyes."
-          value={settings.microbreak_duration_sec}
-          options={durations}
-          onChange={(value) => onChange({ microbreak_duration_sec: value })}
-        />
-        <SelectField
-          label="Long break length"
-          hint="A longer rest for your body."
-          value={settings.long_break_duration_min}
-          options={longDurations}
-          onChange={(value) => onChange({ long_break_duration_min: value })}
-        />
-        <SelectField
-          label="Long break every"
-          hint="How often the long break comes."
-          value={settings.long_break_every}
-          options={frequencies}
-          onChange={(value) => onChange({ long_break_every: value })}
-        />
+        <section className="pb-3">
+          <h3 className="text-sm font-semibold">Micro breaks</h3>
+          <div className="divide-y divide-border/60">
+            <SelectField
+              label="Remind me every"
+              value={settings.microbreak_interval_min}
+              options={intervals}
+              onChange={(value) => onChange({ microbreak_interval_min: value })}
+            />
+            <SelectField
+              label="Micro break length"
+              value={settings.microbreak_duration_sec}
+              options={durations}
+              onChange={(value) => onChange({ microbreak_duration_sec: value })}
+            />
+          </div>
+        </section>
+        <section className="pt-4">
+          <h3 className="text-sm font-semibold">Long breaks</h3>
+          <div className="divide-y divide-border/60">
+            <SelectField
+              label="Long break length"
+              value={settings.long_break_duration_min}
+              options={longDurations}
+              onChange={(value) => onChange({ long_break_duration_min: value })}
+            />
+            <SelectField
+              label="Long break every"
+              value={settings.long_break_every}
+              options={frequencies}
+              onChange={(value) => onChange({ long_break_every: value })}
+            />
+          </div>
+        </section>
       </CardContent>
     </Card>
   );

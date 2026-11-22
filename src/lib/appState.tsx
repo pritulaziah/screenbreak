@@ -151,15 +151,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const reset = useCallback(async () => {
-    try {
-      const result = await resetSettings();
-      settingsRef.current = result.settings;
-      setSettings(result.settings);
-      setSnapshot(result);
-      applyTheme(result.settings.theme, result.settings.appearance);
-    } catch (reason) {
-      console.error(reason);
-    }
+    const result = await resetSettings();
+    settingsRef.current = result.settings;
+    setSettings(result.settings);
+    setSnapshot(result);
+    applyTheme(result.settings.theme, result.settings.appearance);
   }, []);
 
   const togglePause = useCallback(async () => {

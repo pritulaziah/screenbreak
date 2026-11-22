@@ -2,7 +2,6 @@ import { Clock, Square, Timer } from "lucide-react";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -53,10 +52,7 @@ export function CardContentSettings() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Contents</CardTitle>
-        <CardDescription>
-          Choose what to show on the reminder card.
-        </CardDescription>
+        <CardTitle>Contents and controls</CardTitle>
       </CardHeader>
       <CardContent>
         <SettingSwitch

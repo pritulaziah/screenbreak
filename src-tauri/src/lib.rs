@@ -135,6 +135,15 @@ fn show_now(app: AppHandle, state: tauri::State<Mutex<Scheduler>>) -> Snapshot {
     mutate_and_broadcast(&app, state.inner(), |scheduler| scheduler.show_now())
 }
 
+pub(crate) fn show_now_from_tray(app: &AppHandle) {
+    let state = app.state::<Mutex<Scheduler>>();
+    mutate_and_broadcast(app, state.inner(), |scheduler| {
+        if tray::can_show_now(scheduler.snapshot().phase) {
+            scheduler.show_now();
+        }
+    });
+}
+
 pub(crate) fn toggle_pause_from_tray(app: &AppHandle) {
     let state = app.state::<Mutex<Scheduler>>();
     mutate_and_broadcast(app, state.inner(), |scheduler| {

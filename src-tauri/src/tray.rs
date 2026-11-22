@@ -5,17 +5,22 @@ use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}
 use tauri::{AppHandle, Manager};
 
 pub struct TrayItems {
+    pub show_now: MenuItem<tauri::Wry>,
     pub pause: MenuItem<tauri::Wry>,
     pub skip: MenuItem<tauri::Wry>,
 }
 
 pub fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
     let settings = MenuItem::with_id(app, "settings", "Open settings", true, None::<&str>)?;
+    let show_now = MenuItem::with_id(app, "show_now", "Show break now", true, None::<&str>)?;
     let pause = MenuItem::with_id(app, "pause", "Pause for 1 hour", true, None::<&str>)?;
     let skip = MenuItem::with_id(app, "skip", "Skip break", false, None::<&str>)?;
     let separator = PredefinedMenuItem::separator(app)?;
     let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&settings, &pause, &skip, &separator, &quit])?;
+    let menu = Menu::with_items(
+        app,
+        &[&settings, &show_now, &pause, &skip, &separator, &quit],
+    )?;
 
     let mut builder = TrayIconBuilder::with_id("main")
         .menu(&menu)
@@ -23,6 +28,7 @@ pub fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
         .tooltip("ScreenBreak")
         .on_menu_event(|app, event| match event.id().as_ref() {
             "settings" => show_main(app),
+            "show_now" => crate::show_now_from_tray(app),
             "pause" => crate::toggle_pause_from_tray(app),
             "skip" => crate::skip_from_tray(app),
             "quit" => app.exit(0),
@@ -44,9 +50,17 @@ pub fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
     }
 
     builder.build(app)?;
-    app.manage(TrayItems { pause, skip });
+    app.manage(TrayItems {
+        show_now,
+        pause,
+        skip,
+    });
 
     Ok(())
+}
+
+pub(crate) fn can_show_now(phase: Phase) -> bool {
+    matches!(phase, Phase::Idle)
 }
 
 pub fn update_tray(app: &AppHandle, snapshot: &Snapshot) {
@@ -67,6 +81,7 @@ pub fn update_tray(app: &AppHandle, snapshot: &Snapshot) {
     }
 
     if let Some(items) = app.try_state::<TrayItems>() {
+        let _ = items.show_now.set_enabled(can_show_now(snapshot.phase));
         let _ = items.pause.set_text(if snapshot.paused {
             "Resume"
         } else {
@@ -75,5 +90,41 @@ pub fn update_tray(app: &AppHandle, snapshot: &Snapshot) {
         let _ = items
             .skip
             .set_enabled(matches!(snapshot.phase, Phase::Break));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::scheduler::Scheduler;
+    use crate::settings::Settings;
+    use std::time::SystemTime;
+
+    #[test]
+    fn show_now_is_enabled_while_idle_including_pause() {
+        let mut scheduler = Scheduler::new(Settings::default());
+        assert!(can_show_now(scheduler.snapshot().phase));
+
+        scheduler.toggle_pause(SystemTime::now());
+        let snapshot = scheduler.snapshot();
+        assert!(snapshot.paused);
+        assert!(can_show_now(snapshot.phase));
+    }
+
+    #[test]
+    fn show_now_is_disabled_during_break_including_break_pause() {
+        let mut scheduler = Scheduler::new(Settings::default());
+        scheduler.show_now();
+        assert!(!can_show_now(scheduler.snapshot().phase));
+
+        scheduler.toggle_break_pause();
+        let snapshot = scheduler.snapshot();
+        assert!(snapshot.break_paused);
+        assert!(!can_show_now(snapshot.phase));
+
+        scheduler.toggle_pause(SystemTime::now());
+        let snapshot = scheduler.snapshot();
+        assert!(snapshot.paused);
+        assert!(!can_show_now(snapshot.phase));
     }
 }

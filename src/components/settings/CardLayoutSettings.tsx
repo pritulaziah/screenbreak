@@ -1,7 +1,6 @@
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -29,13 +28,13 @@ export function CardLayoutSettings() {
   );
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Card size</CardTitle>
-          <CardDescription>Compact, normal, or large.</CardDescription>
-        </CardHeader>
-        <CardContent>
+    <Card>
+      <CardHeader>
+        <CardTitle>Layout</CardTitle>
+      </CardHeader>
+      <CardContent className="divide-y divide-border/60">
+        <section className="space-y-3 pb-4">
+          <h3 className="text-sm font-medium">Card size</h3>
           <Segmented
             value={settings.notification_size}
             onChange={(notification_size) => update({ notification_size })}
@@ -46,15 +45,9 @@ export function CardLayoutSettings() {
             ]}
             className="w-full"
           />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Orientation</CardTitle>
-          <CardDescription>Horizontal or vertical.</CardDescription>
-        </CardHeader>
-        <CardContent>
+        </section>
+        <section className="space-y-3 py-4">
+          <h3 className="text-sm font-medium">Orientation</h3>
           <Segmented
             value={settings.card_orientation}
             onChange={(card_orientation) => update({ card_orientation })}
@@ -64,17 +57,9 @@ export function CardLayoutSettings() {
             ]}
             className="w-full"
           />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Position</CardTitle>
-          <CardDescription>
-            Where the card appears on the screen.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+        </section>
+        <section className="space-y-3 pt-4">
+          <h3 className="text-sm font-medium">Position</h3>
           <div className="mx-auto grid w-full max-w-[250px] grid-cols-3 gap-1.5 rounded-[16px] border border-border/70 bg-background/25 p-2">
             {POSITIONS.map((position) => {
               const active = settings.position === position.value;
@@ -87,7 +72,7 @@ export function CardLayoutSettings() {
                   aria-pressed={active}
                   onClick={() => update({ position: position.value })}
                   className={cn(
-                    "grid h-[54px] place-items-center rounded-lg border transition-all",
+                    "grid h-[54px] place-items-center rounded-lg border transition-all focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
                     active
                       ? "border-primary/60 bg-primary/12"
                       : "border-transparent bg-background/30 hover:bg-background/55",
@@ -103,11 +88,11 @@ export function CardLayoutSettings() {
               );
             })}
           </div>
-          <p className="mt-3 text-center text-xs text-muted-foreground">
+          <p className="text-center text-xs text-muted-foreground">
             {currentPosition?.label}
           </p>
-        </CardContent>
-      </Card>
-    </div>
+        </section>
+      </CardContent>
+    </Card>
   );
 }
