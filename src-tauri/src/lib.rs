@@ -4,15 +4,13 @@ mod settings;
 mod tray;
 mod windows;
 
-use scheduler::{Phase, Scheduler, Snapshot};
+use scheduler::{Scheduler, Snapshot};
 use settings::{Settings, load_settings, save_settings};
 use std::sync::Mutex;
 use std::time::{Duration, SystemTime};
 use tauri::{AppHandle, Emitter, Manager, WindowEvent};
 use tray::{setup_tray, update_tray};
-use windows::{
-    create_reminder_window, hide_reminder, show_main, show_reminder, update_reminder_window,
-};
+use windows::{create_reminder_window, show_main, sync_reminder, update_reminder_window};
 
 fn mutate_and_broadcast(
     app: &AppHandle,
@@ -27,6 +25,7 @@ fn mutate_and_broadcast(
 
     let _ = app.emit("scheduler:update", &snapshot);
     update_tray(app, &snapshot);
+    sync_reminder(app, &snapshot);
 
     snapshot
 }
@@ -152,7 +151,6 @@ fn start_scheduler_loop(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
         let mut interval = tokio::time::interval(Duration::from_secs(1));
         interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
-        let mut visible = false;
 
         loop {
             interval.tick().await;
@@ -166,17 +164,7 @@ fn start_scheduler_loop(app: AppHandle) {
 
             let _ = app.emit("scheduler:update", &snapshot);
             update_tray(&app, &snapshot);
-
-            let should_show = !snapshot.paused && matches!(snapshot.phase, Phase::Break);
-
-            if should_show != visible {
-                if should_show {
-                    show_reminder(&app);
-                } else {
-                    hide_reminder(&app);
-                }
-                visible = should_show;
-            }
+            sync_reminder(&app, &snapshot);
         }
     });
 }
@@ -200,6 +188,9 @@ pub fn run() {
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
+                if window.label() == "reminder" {
+                    windows::note_reminder_hidden();
+                }
                 let _ = window.hide();
             }
         })

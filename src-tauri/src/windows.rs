@@ -1,8 +1,13 @@
+use crate::scheduler::{Phase, Snapshot};
 use crate::settings::Settings;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{
     AppHandle, LogicalSize, Manager, PhysicalPosition, WebviewUrl, WebviewWindow,
     WebviewWindowBuilder,
 };
+
+/// The reminder window is created hidden, so the tracked state starts as hidden.
+static REMINDER_VISIBLE: AtomicBool = AtomicBool::new(false);
 
 pub fn reminder_size(size: &str, orientation: &str) -> (f64, f64) {
     if orientation == "vertical" {
@@ -97,27 +102,42 @@ pub fn update_reminder_window(app: &AppHandle, settings: &Settings) {
 
 pub fn show_reminder(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("reminder") {
-        #[cfg(windows)]
-        {
-            use windows::Win32::UI::WindowsAndMessaging::{SW_SHOWNOACTIVATE, ShowWindow};
-
-            if let Ok(hwnd) = window.hwnd() {
-                // SAFETY: `hwnd` belongs to the live reminder window. ShowWindow only
-                // changes its visibility and does not take ownership of the handle.
-                unsafe {
-                    let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE);
-                }
-                return;
-            }
-        }
-
+        // Do not call `ShowWindow` directly here. The window runtime tracks the
+        // visibility flag, and `hide` is a no-op when that flag never changed.
+        // `show` uses `SW_SHOWNOACTIVATE` because the window is built with
+        // `focused(false)`, so it does not take focus.
         let _ = window.show();
+        REMINDER_VISIBLE.store(true, Ordering::Relaxed);
     }
 }
 
 pub fn hide_reminder(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("reminder") {
         let _ = window.hide();
+        REMINDER_VISIBLE.store(false, Ordering::Relaxed);
+    }
+}
+
+/// Clears the tracked visibility when another code path hid the reminder window.
+pub fn note_reminder_hidden() {
+    REMINDER_VISIBLE.store(false, Ordering::Relaxed);
+}
+
+/// Shows or hides the reminder window to match the scheduler state.
+///
+/// A visible reminder window covers the desktop, so it must be hidden as soon
+/// as the break ends. Otherwise it keeps receiving mouse clicks.
+pub fn sync_reminder(app: &AppHandle, snapshot: &Snapshot) {
+    let should_show = !snapshot.paused && matches!(snapshot.phase, Phase::Break);
+
+    if should_show == REMINDER_VISIBLE.load(Ordering::Relaxed) {
+        return;
+    }
+
+    if should_show {
+        show_reminder(app);
+    } else {
+        hide_reminder(app);
     }
 }
 
