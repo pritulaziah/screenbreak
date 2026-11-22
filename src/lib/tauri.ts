@@ -13,8 +13,8 @@ export function saveCustomBackground(data: string) {
   return invoke<string[]>("save_custom_background", { data });
 }
 
-export function removeCustomBackground(path?: string) {
-  return invoke<string[]>("remove_custom_background", { path: path ?? null });
+export function removeCustomBackground(path: string) {
+  return invoke<string[]>("remove_custom_background", { path });
 }
 
 export function reorderCustomBackgrounds(paths: string[]) {
@@ -47,10 +47,6 @@ export function toggleBreakPause() {
 
 export function togglePause() {
   return invoke<SchedulerSnapshot>("toggle_pause");
-}
-
-export function showNow() {
-  return invoke<SchedulerSnapshot>("show_now");
 }
 
 export function resetSettings() {

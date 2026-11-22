@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
@@ -25,6 +25,7 @@ export function SliderField({
   disabled = false,
 }: SliderFieldProps) {
   const [local, setLocal] = useState(value);
+  const labelId = useId();
 
   useEffect(() => {
     setLocal(value);
@@ -33,13 +34,15 @@ export function SliderField({
   return (
     <div className={cn("space-y-2.5", disabled && "opacity-50")}>
       <div className="flex items-center justify-between gap-3">
-        <Label className="text-sm">{label}</Label>
+        <Label id={labelId} className="text-sm">
+          {label}
+        </Label>
         <span className="rounded-md border border-border/60 bg-background/30 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-muted-foreground">
           {format(local)}
         </span>
       </div>
       <Slider
-        aria-label={label}
+        aria-labelledby={labelId}
         value={[local]}
         min={min}
         max={max}

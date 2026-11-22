@@ -2,10 +2,9 @@ import { useEffect, useRef, useState, type DragEvent } from "react";
 import { createPortal } from "react-dom";
 import { ImageUp, Loader2, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  isAcceptedImage,
-  MAX_IMAGE_BYTES,
-} from "@/lib/background";
+import { BackgroundUploadError } from "@/lib/appState";
+import { isAcceptedImage } from "@/lib/background";
+import { useDialogFocus } from "@/lib/useDialogFocus";
 import { cn } from "@/lib/utils";
 
 interface StagedImage {
@@ -28,6 +27,7 @@ export function AddImagesDialog({
   const dragDepth = useRef(0);
   const initialRef = useRef(initialFiles);
   const stagedRef = useRef<StagedImage[]>([]);
+  const panelRef = useDialogFocus<HTMLDivElement>(onClose);
   const [staged, setStaged] = useState<StagedImage[]>([]);
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -49,39 +49,31 @@ export function AddImagesDialog({
     const files = initialRef.current;
     if (files && files.length > 0) {
       initialRef.current = undefined;
-      addFiles(files);
+      void addFiles(files);
     }
     // Stage the initial files one time on mount.
   }, []);
 
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape" && !busy) onClose();
-    }
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [busy, onClose]);
-
-  function addFiles(files: File[]) {
+  async function addFiles(files: File[]) {
     if (files.length === 0) return;
 
-    const images = files.filter(isAcceptedImage);
-    const accepted = images.filter((file) => file.size <= MAX_IMAGE_BYTES);
+    const accepted: File[] = [];
+    for (const file of files) {
+      if (await isAcceptedImage(file)) {
+        accepted.push(file);
+      }
+    }
 
     if (accepted.length === 0) {
-      setError(
-        images.length === 0
-          ? "Use PNG, JPEG, or WebP images."
-          : "The image is larger than 25 MB.",
-      );
+      setError("Use PNG, JPEG, or WebP images up to 25 MB.");
       return;
     }
-    if (accepted.length < files.length) {
-      setError("Some files were skipped. Use PNG, JPEG, or WebP up to 25 MB.");
-    } else {
-      setError(null);
-    }
+
+    setError(
+      accepted.length < files.length
+        ? "Some files were skipped. Use PNG, JPEG, or WebP up to 25 MB."
+        : null,
+    );
 
     setStaged((current) => [
       ...current,
@@ -118,7 +110,7 @@ export function AddImagesDialog({
     event.preventDefault();
     dragDepth.current = 0;
     setDragging(false);
-    addFiles(Array.from(event.dataTransfer.files));
+    void addFiles(Array.from(event.dataTransfer.files));
   }
 
   async function submit() {
@@ -130,6 +122,14 @@ export function AddImagesDialog({
       await onAdd(staged.map((item) => item.file));
       onClose();
     } catch (reason) {
+      if (reason instanceof BackgroundUploadError && reason.saved > 0) {
+        setStaged((current) => {
+          for (const item of current.slice(0, reason.saved)) {
+            URL.revokeObjectURL(item.url);
+          }
+          return current.slice(reason.saved);
+        });
+      }
       setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
       setBusy(false);
@@ -142,19 +142,17 @@ export function AddImagesDialog({
       aria-modal="true"
       aria-label="Add images"
       className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-6 backdrop-blur-sm"
-      onClick={() => {
-        if (!busy) onClose();
-      }}
+      onClick={onClose}
     >
       <div
+        ref={panelRef}
+        aria-busy={busy}
         className="flex max-h-full w-full max-w-[680px] flex-col gap-4 overflow-y-auto rounded-[22px] border border-border/70 bg-popover p-5 text-popover-foreground shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold tracking-tight">
-              Add images
-            </h2>
+            <h2 className="text-lg font-semibold tracking-tight">Add images</h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
               PNG, JPEG, or WebP · up to 25 MB each.
             </p>
@@ -213,8 +211,8 @@ export function AddImagesDialog({
                   type="button"
                   disabled={busy}
                   onClick={() => removeStaged(item.url)}
-                  aria-label="Remove image"
-                  title="Remove image"
+                  aria-label={`Remove ${item.file.name}`}
+                  title={`Remove ${item.file.name}`}
                   className="absolute right-1 top-1 grid size-6 place-items-center rounded-full border border-white/25 bg-black/60 text-white/90 backdrop-blur-sm transition-colors hover:bg-destructive hover:text-destructive-foreground disabled:opacity-50"
                 >
                   <X className="size-3" />
@@ -235,7 +233,11 @@ export function AddImagesDialog({
           </div>
         </div>
 
-        {error ? <p className="text-xs text-destructive">{error}</p> : null}
+        {error ? (
+          <p role="alert" className="text-xs text-destructive">
+            {error}
+          </p>
+        ) : null}
 
         <div className="flex items-center justify-end gap-2">
           <Button
@@ -261,11 +263,12 @@ export function AddImagesDialog({
           type="file"
           multiple
           accept="image/png,image/jpeg,image/webp"
+          tabIndex={-1}
           className="hidden"
           onChange={(event) => {
             const files = Array.from(event.target.files ?? []);
             event.target.value = "";
-            addFiles(files);
+            void addFiles(files);
           }}
         />
       </div>

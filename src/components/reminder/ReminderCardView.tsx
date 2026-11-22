@@ -1,8 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Clock, Pause, Play, Square, X } from "lucide-react";
 import { BreakArt } from "@/components/art/BreakArt";
-import { useAppState } from "@/lib/appState";
-import { pickBackgroundIndex } from "@/lib/background";
 import { getThemeMeta } from "@/lib/themes";
 import type { CardOrientation, ThemeId } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -21,12 +19,7 @@ interface CircleButtonProps {
   children: ReactNode;
 }
 
-function CircleButton({
-  label,
-  onClick,
-  active,
-  children,
-}: CircleButtonProps) {
+function CircleButton({ label, onClick, active, children }: CircleButtonProps) {
   return (
     <button
       type="button"
@@ -46,18 +39,16 @@ export interface ReminderCardViewProps {
   label: string;
   time: string;
   progress: number;
-  backgroundIndex: number;
-  randomBackground: boolean;
+  backgroundUrl?: string;
   theme: ThemeId;
   orientation?: CardOrientation;
   showCountdown: boolean;
   allowSnooze: boolean;
   showStop: boolean;
   breakPaused?: boolean;
-  initialSnoozeOpen?: boolean;
-  onSnooze?: (minutes: number) => void;
-  onPause?: () => void;
-  onStop?: () => void;
+  onSnooze: (minutes: number) => void;
+  onPause: () => void;
+  onStop: () => void;
   onClose?: () => void;
   className?: string;
 }
@@ -66,15 +57,13 @@ export function ReminderCardView({
   label,
   time,
   progress,
-  backgroundIndex,
-  randomBackground,
+  backgroundUrl,
   theme,
   orientation = "horizontal",
   showCountdown,
   allowSnooze,
   showStop,
   breakPaused = false,
-  initialSnoozeOpen = false,
   onSnooze,
   onPause,
   onStop,
@@ -83,20 +72,9 @@ export function ReminderCardView({
 }: ReminderCardViewProps) {
   const meta = getThemeMeta(theme);
   const Icon = meta.icon;
-  const [snoozeOpen, setSnoozeOpen] = useState(initialSnoozeOpen);
-  const { customBackgrounds } = useAppState();
+  const [snoozeOpen, setSnoozeOpen] = useState(false);
   const progressValue = Math.max(0, Math.min(1, progress)) * 100;
   const vertical = orientation === "vertical";
-  const background =
-    customBackgrounds.length > 0
-      ? customBackgrounds[
-          pickBackgroundIndex(
-            backgroundIndex,
-            customBackgrounds.length,
-            randomBackground,
-          )
-        ]
-      : null;
 
   const countdown = showCountdown ? (
     <>
@@ -118,7 +96,7 @@ export function ReminderCardView({
         <button
           key={option.minutes}
           type="button"
-          onClick={() => onSnooze?.(option.minutes)}
+          onClick={() => onSnooze(option.minutes)}
           title={`Snooze for ${option.label}`}
           className="reminder-chip"
         >
@@ -168,9 +146,9 @@ export function ReminderCardView({
         className,
       )}
     >
-      {background ? (
+      {backgroundUrl ? (
         <img
-          src={background.url}
+          src={backgroundUrl}
           alt=""
           className="absolute inset-0 h-full w-full object-cover"
         />

@@ -1,76 +1,85 @@
+﻿import { useId, type ComponentType } from "react";
 import type { ThemeId } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 interface BreakArtProps {
   theme: ThemeId;
   className?: string;
-  align?: "center" | "bottom";
 }
 
-export function BreakArt({ theme, className, align = "center" }: BreakArtProps) {
+type SceneProps = { prefix: string };
+
+const SCENES: Record<ThemeId, ComponentType<SceneProps>> = {
+  cozy: CozyScene,
+  night: NightScene,
+  nature: NatureScene,
+};
+
+export function BreakArt({ theme, className }: BreakArtProps) {
+  const prefix = useId().replace(/:/g, "");
+  const Scene = SCENES[theme];
+
   return (
     <svg
       viewBox="0 0 640 320"
-      preserveAspectRatio={align === "bottom" ? "xMidYMax slice" : "xMidYMid slice"}
+      preserveAspectRatio="xMidYMid slice"
       className={cn("block h-full w-full", className)}
       aria-hidden="true"
       focusable="false"
     >
-      {theme === "cozy" ? <CozyScene /> : null}
-      {theme === "night" ? <NightScene /> : null}
-      {theme === "nature" ? <NatureScene /> : null}
+      <Scene prefix={prefix} />
     </svg>
   );
 }
 
-function CozyScene() {
+function CozyScene({ prefix }: SceneProps) {
   return (
     <>
       <defs>
-        <linearGradient id="cozy-wall" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${prefix}-cozy-wall`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#2c1a12" />
           <stop offset="0.62" stopColor="#5c3320" />
           <stop offset="1" stopColor="#8a4d2a" />
         </linearGradient>
-        <linearGradient id="cozy-sky" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${prefix}-cozy-sky`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#ffe6bc" />
           <stop offset="0.48" stopColor="#f6ab68" />
           <stop offset="1" stopColor="#c8673a" />
         </linearGradient>
-        <radialGradient id="cozy-sun" cx="0.5" cy="0.5" r="0.5">
+        <radialGradient id={`${prefix}-cozy-sun`} cx="0.5" cy="0.5" r="0.5">
           <stop offset="0" stopColor="#fff7dc" stopOpacity="0.95" />
           <stop offset="0.4" stopColor="#ffd98f" stopOpacity="0.55" />
           <stop offset="1" stopColor="#ffb36b" stopOpacity="0" />
         </radialGradient>
-        <linearGradient id="cozy-bed" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${prefix}-cozy-bed`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#f7e3c8" />
           <stop offset="1" stopColor="#d8b68d" />
         </linearGradient>
-        <linearGradient id="cozy-blanket" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${prefix}-cozy-blanket`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#e8c9a3" />
           <stop offset="1" stopColor="#c79b70" />
         </linearGradient>
-        <linearGradient id="cozy-pot" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${prefix}-cozy-pot`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#a56c44" />
           <stop offset="1" stopColor="#6f4328" />
         </linearGradient>
-        <radialGradient id="cozy-vignette" cx="0.52" cy="0.45" r="0.78">
+        <radialGradient id={`${prefix}-cozy-vignette`} cx="0.52" cy="0.45" r="0.78">
           <stop offset="0.45" stopColor="#120a06" stopOpacity="0" />
           <stop offset="1" stopColor="#120a06" stopOpacity="0.62" />
         </radialGradient>
-        <radialGradient id="cozy-warm" cx="0.5" cy="0.5" r="0.5">
+        <radialGradient id={`${prefix}-cozy-warm`} cx="0.5" cy="0.5" r="0.5">
           <stop offset="0" stopColor="#ffcf8f" stopOpacity="0.3" />
           <stop offset="1" stopColor="#ffcf8f" stopOpacity="0" />
         </radialGradient>
       </defs>
 
-      <rect width="640" height="320" fill="url(#cozy-wall)" />
+      <rect width="640" height="320" fill={`url(#${prefix}-cozy-wall)`} />
 
       {/* Window and evening sky */}
       <g>
         <rect x="288" y="18" width="324" height="238" rx="10" fill="#1b100b" />
-        <rect x="298" y="28" width="304" height="218" rx="6" fill="url(#cozy-sky)" />
-        <circle cx="492" cy="108" r="82" fill="url(#cozy-sun)" />
+        <rect x="298" y="28" width="304" height="218" rx="6" fill={`url(#${prefix}-cozy-sky)`} />
+        <circle cx="492" cy="108" r="82" fill={`url(#${prefix}-cozy-sun)`} />
         <circle cx="492" cy="108" r="27" fill="#fff1cc" opacity="0.92" />
         <path
           d="M298 190 C 344 166 386 190 428 176 C 474 160 520 188 602 168 L602 246 L298 246 Z"
@@ -120,18 +129,18 @@ function CozyScene() {
         fill="#ffe2b0"
         opacity="0.06"
       />
-      <circle cx="380" cy="210" r="190" fill="url(#cozy-warm)" />
+      <circle cx="380" cy="210" r="190" fill={`url(#${prefix}-cozy-warm)`} />
 
       {/* Bed */}
       <g>
         <rect x="-40" y="238" width="468" height="116" rx="30" fill="#452818" />
         <path
           d="M-40 232 C 36 212 154 210 248 222 C 322 232 382 246 428 262 L428 320 L-40 320 Z"
-          fill="url(#cozy-bed)"
+          fill={`url(#${prefix}-cozy-bed)`}
         />
         <path
           d="M-40 266 C 58 248 164 252 264 266 C 330 276 380 288 412 300 L412 320 L-40 320 Z"
-          fill="url(#cozy-blanket)"
+          fill={`url(#${prefix}-cozy-blanket)`}
         />
         <path
           d="M-28 272 C 66 260 152 266 236 280"
@@ -235,7 +244,7 @@ function CozyScene() {
           d="M12 -28 C 30 -48 48 -50 56 -38 C 44 -24 26 -20 12 -28 Z"
           fill="#6b8f52"
         />
-        <path d="M-28 60 L44 60 L34 124 L-18 124 Z" fill="url(#cozy-pot)" />
+        <path d="M-28 60 L44 60 L34 124 L-18 124 Z" fill={`url(#${prefix}-cozy-pot)`} />
         <path d="M-30 58 L46 58 L42 70 L-26 70 Z" fill="#b27a4e" />
       </g>
 
@@ -250,55 +259,55 @@ function CozyScene() {
         <circle cx="576" cy="188" r="1.2" />
       </g>
 
-      <rect width="640" height="320" fill="url(#cozy-vignette)" />
+      <rect width="640" height="320" fill={`url(#${prefix}-cozy-vignette)`} />
     </>
   );
 }
 
-function NightScene() {
+function NightScene({ prefix }: SceneProps) {
   return (
     <>
       <defs>
-        <linearGradient id="night-wall" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${prefix}-night-wall`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#100a20" />
           <stop offset="0.6" stopColor="#1d1136" />
           <stop offset="1" stopColor="#2b184a" />
         </linearGradient>
-        <linearGradient id="night-sky" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${prefix}-night-sky`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#1a0e3a" />
           <stop offset="0.52" stopColor="#38206a" />
           <stop offset="1" stopColor="#6b3d9e" />
         </linearGradient>
-        <radialGradient id="night-moon-glow" cx="0.5" cy="0.5" r="0.5">
+        <radialGradient id={`${prefix}-night-moon-glow`} cx="0.5" cy="0.5" r="0.5">
           <stop offset="0" stopColor="#e9dcff" stopOpacity="0.65" />
           <stop offset="0.5" stopColor="#a98cff" stopOpacity="0.22" />
           <stop offset="1" stopColor="#7c5cff" stopOpacity="0" />
         </radialGradient>
-        <linearGradient id="night-city" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${prefix}-night-city`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#211340" />
           <stop offset="1" stopColor="#0e0820" />
         </linearGradient>
-        <linearGradient id="night-frame" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${prefix}-night-frame`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#2c1a4a" />
           <stop offset="1" stopColor="#160d2a" />
         </linearGradient>
-        <radialGradient id="night-vignette" cx="0.5" cy="0.44" r="0.8">
+        <radialGradient id={`${prefix}-night-vignette`} cx="0.5" cy="0.44" r="0.8">
           <stop offset="0.4" stopColor="#08040f" stopOpacity="0" />
           <stop offset="1" stopColor="#08040f" stopOpacity="0.72" />
         </radialGradient>
-        <radialGradient id="night-purple" cx="0.5" cy="0.5" r="0.5">
+        <radialGradient id={`${prefix}-night-purple`} cx="0.5" cy="0.5" r="0.5">
           <stop offset="0" stopColor="#8b5cf6" stopOpacity="0.3" />
           <stop offset="1" stopColor="#8b5cf6" stopOpacity="0" />
         </radialGradient>
       </defs>
 
-      <rect width="640" height="320" fill="url(#night-wall)" />
+      <rect width="640" height="320" fill={`url(#${prefix}-night-wall)`} />
 
       {/* Window and city night */}
       <g>
         <rect x="164" y="16" width="458" height="244" rx="10" fill="#0d0719" />
-        <rect x="174" y="26" width="438" height="224" rx="6" fill="url(#night-sky)" />
-        <circle cx="506" cy="86" r="100" fill="url(#night-moon-glow)" />
+        <rect x="174" y="26" width="438" height="224" rx="6" fill={`url(#${prefix}-night-sky)`} />
+        <circle cx="506" cy="86" r="100" fill={`url(#${prefix}-night-moon-glow)`} />
         <circle cx="506" cy="86" r="31" fill="#f2e7ff" opacity="0.94" />
         <circle cx="520" cy="78" r="29" fill="#2a1852" />
 
@@ -317,7 +326,7 @@ function NightScene() {
         </g>
 
         {/* Distant city */}
-        <g fill="url(#night-city)">
+        <g fill={`url(#${prefix}-night-city)`}>
           <rect x="174" y="178" width="38" height="72" />
           <rect x="216" y="158" width="30" height="92" />
           <rect x="250" y="188" width="44" height="62" />
@@ -355,8 +364,8 @@ function NightScene() {
         </g>
 
         {/* Window frame */}
-        <rect x="382" y="26" width="7" height="224" fill="url(#night-frame)" />
-        <rect x="174" y="146" width="438" height="7" fill="url(#night-frame)" />
+        <rect x="382" y="26" width="7" height="224" fill={`url(#${prefix}-night-frame)`} />
+        <rect x="174" y="146" width="438" height="7" fill={`url(#${prefix}-night-frame)`} />
         <rect
           x="164"
           y="16"
@@ -449,58 +458,58 @@ function NightScene() {
       />
 
       {/* Ambient glow */}
-      <circle cx="120" cy="300" r="170" fill="url(#night-purple)" />
-      <circle cx="520" cy="110" r="150" fill="url(#night-moon-glow)" opacity="0.5" />
+      <circle cx="120" cy="300" r="170" fill={`url(#${prefix}-night-purple)`} />
+      <circle cx="520" cy="110" r="150" fill={`url(#${prefix}-night-moon-glow)`} opacity="0.5" />
 
-      <rect width="640" height="320" fill="url(#night-vignette)" />
+      <rect width="640" height="320" fill={`url(#${prefix}-night-vignette)`} />
     </>
   );
 }
 
-function NatureScene() {
+function NatureScene({ prefix }: SceneProps) {
   return (
     <>
       <defs>
-        <linearGradient id="nature-wall" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${prefix}-nature-wall`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#15261a" />
           <stop offset="0.62" stopColor="#2b452a" />
           <stop offset="1" stopColor="#47643a" />
         </linearGradient>
-        <linearGradient id="nature-sky" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${prefix}-nature-sky`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#eef6c9" />
           <stop offset="0.5" stopColor="#b8d98d" />
           <stop offset="1" stopColor="#6f9d58" />
         </linearGradient>
-        <radialGradient id="nature-sun" cx="0.5" cy="0.5" r="0.5">
+        <radialGradient id={`${prefix}-nature-sun`} cx="0.5" cy="0.5" r="0.5">
           <stop offset="0" stopColor="#fbffd9" stopOpacity="0.95" />
           <stop offset="0.42" stopColor="#e8f7ae" stopOpacity="0.5" />
           <stop offset="1" stopColor="#c7e88a" stopOpacity="0" />
         </radialGradient>
-        <linearGradient id="nature-frame" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${prefix}-nature-frame`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#435334" />
           <stop offset="1" stopColor="#26331f" />
         </linearGradient>
-        <linearGradient id="nature-pot" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={`${prefix}-nature-pot`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#b07a4f" />
           <stop offset="1" stopColor="#7b4f30" />
         </linearGradient>
-        <radialGradient id="nature-vignette" cx="0.5" cy="0.45" r="0.8">
+        <radialGradient id={`${prefix}-nature-vignette`} cx="0.5" cy="0.45" r="0.8">
           <stop offset="0.42" stopColor="#081006" stopOpacity="0" />
           <stop offset="1" stopColor="#081006" stopOpacity="0.62" />
         </radialGradient>
-        <radialGradient id="nature-glow" cx="0.5" cy="0.5" r="0.5">
+        <radialGradient id={`${prefix}-nature-glow`} cx="0.5" cy="0.5" r="0.5">
           <stop offset="0" stopColor="#d9f0a6" stopOpacity="0.3" />
           <stop offset="1" stopColor="#d9f0a6" stopOpacity="0" />
         </radialGradient>
       </defs>
 
-      <rect width="640" height="320" fill="url(#nature-wall)" />
+      <rect width="640" height="320" fill={`url(#${prefix}-nature-wall)`} />
 
       {/* Window and garden */}
       <g>
         <rect x="240" y="16" width="382" height="240" rx="10" fill="#1b2718" />
-        <rect x="250" y="26" width="362" height="220" rx="6" fill="url(#nature-sky)" />
-        <circle cx="506" cy="96" r="94" fill="url(#nature-sun)" />
+        <rect x="250" y="26" width="362" height="220" rx="6" fill={`url(#${prefix}-nature-sky)`} />
+        <circle cx="506" cy="96" r="94" fill={`url(#${prefix}-nature-sun)`} />
         <circle cx="506" cy="96" r="26" fill="#fbffdc" opacity="0.9" />
 
         {/* Garden foliage */}
@@ -524,8 +533,8 @@ function NatureScene() {
         </g>
 
         {/* Window frame */}
-        <rect x="428" y="26" width="7" height="220" fill="url(#nature-frame)" />
-        <rect x="250" y="138" width="362" height="7" fill="url(#nature-frame)" />
+        <rect x="428" y="26" width="7" height="220" fill={`url(#${prefix}-nature-frame)`} />
+        <rect x="250" y="138" width="362" height="7" fill={`url(#${prefix}-nature-frame)`} />
         <rect
           x="240"
           y="16"
@@ -600,7 +609,7 @@ function NatureScene() {
 
       {/* Hanging plant */}
       <g transform="translate(74 10)">
-        <path d="M0 0 L54 0 L48 34 L6 34 Z" fill="url(#nature-pot)" />
+        <path d="M0 0 L54 0 L48 34 L6 34 Z" fill={`url(#${prefix}-nature-pot)`} />
         <path d="M-2 0 L56 0 L54 8 L0 8 Z" fill="#c08b5c" />
         <g stroke="#4f7d3f" strokeWidth="2.5" fill="none">
           <path d="M14 34 C 8 58 12 78 4 96" />
@@ -628,7 +637,7 @@ function NatureScene() {
         <path d="M6 18 C -16 2 -24 -14 -14 -28 C 0 -20 8 -2 6 18 Z" fill="#4f7d3f" />
         <path d="M10 4 C 30 -10 42 -26 32 -40 C 16 -32 10 -12 10 4 Z" fill="#6f9d58" />
         <path d="M4 -12 C -12 -30 -10 -46 2 -52 C 14 -40 12 -22 4 -12 Z" fill="#5d8a49" />
-        <path d="M-24 46 L40 46 L32 102 L-16 102 Z" fill="url(#nature-pot)" />
+        <path d="M-24 46 L40 46 L32 102 L-16 102 Z" fill={`url(#${prefix}-nature-pot)`} />
         <path d="M-26 44 L42 44 L38 54 L-22 54 Z" fill="#c08b5c" />
       </g>
 
@@ -643,7 +652,7 @@ function NatureScene() {
         <path d="M-6 20 C -28 6 -34 -10 -24 -24 C -8 -16 -2 2 -6 20 Z" fill="#4f7d3f" />
         <path d="M-10 6 C -32 -8 -36 -26 -26 -38 C -12 -28 -8 -10 -10 6 Z" fill="#5d8a49" />
         <path d="M-2 -10 C 16 -26 34 -26 42 -14 C 30 0 12 4 -2 -10 Z" fill="#7cab61" />
-        <path d="M-22 48 L34 48 L26 100 L-14 100 Z" fill="url(#nature-pot)" />
+        <path d="M-22 48 L34 48 L26 100 L-14 100 Z" fill={`url(#${prefix}-nature-pot)`} />
         <path d="M-24 46 L36 46 L32 56 L-20 56 Z" fill="#c08b5c" />
       </g>
 
@@ -653,7 +662,7 @@ function NatureScene() {
         fill="#eaf7c0"
         opacity="0.08"
       />
-      <circle cx="330" cy="230" r="180" fill="url(#nature-glow)" />
+      <circle cx="330" cy="230" r="180" fill={`url(#${prefix}-nature-glow)`} />
       <g fill="#f3ffd2" opacity="0.55">
         <circle cx="330" cy="92" r="1.7" />
         <circle cx="378" cy="128" r="1.2" />
@@ -663,7 +672,7 @@ function NatureScene() {
         <circle cx="552" cy="104" r="1.5" />
       </g>
 
-      <rect width="640" height="320" fill="url(#nature-vignette)" />
+      <rect width="640" height="320" fill={`url(#${prefix}-nature-vignette)`} />
     </>
   );
 }

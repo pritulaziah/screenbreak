@@ -8,7 +8,6 @@ import {
   type ReactNode,
 } from "react";
 import { getVersion } from "@tauri-apps/api/app";
-import { relaunch } from "@tauri-apps/plugin-process";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 
 export type UpdateStatus =
@@ -99,9 +98,15 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
         }));
       }
     } catch (reason) {
+      const previous = updateRef.current;
+      updateRef.current = null;
+      if (previous) void previous.close().catch(() => {});
+      console.error(reason);
       setState((current) => ({
         ...current,
         status: "error",
+        version: null,
+        notes: null,
         error: toMessage(reason),
         progress: null,
       }));
@@ -150,11 +155,10 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
             }));
           }
         },
-        { restartAfterInstall: true },
+        { restartAfterInstall: true, timeout: 120_000 },
       );
-
-      await relaunch();
     } catch (reason) {
+      console.error(reason);
       setState((current) => ({
         ...current,
         status: "error",
@@ -178,7 +182,9 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
           setState((current) => ({ ...current, currentVersion: version }));
         }
       })
-      .catch(() => {});
+      .catch((reason) => {
+        if (!disposed) console.error(reason);
+      });
 
     if (!import.meta.env.PROD) {
       return () => {

@@ -1,8 +1,8 @@
-import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { CustomBackground } from "@/lib/types";
+import { useDialogFocus } from "@/lib/useDialogFocus";
 
 interface BackgroundPreviewDialogProps {
   background: CustomBackground;
@@ -17,21 +17,15 @@ export function BackgroundPreviewDialog({
   onClose,
   onRemove,
 }: BackgroundPreviewDialogProps) {
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
+  const dialogRef = useDialogFocus<HTMLDivElement>(onClose);
 
   return createPortal(
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-label="Image preview"
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-black/70 p-6 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-black/70 p-6 backdrop-blur-sm focus:outline-none"
       onClick={onClose}
     >
       <img
@@ -45,7 +39,7 @@ export function BackgroundPreviewDialog({
         className="flex items-center gap-2"
         onClick={(event) => event.stopPropagation()}
       >
-        <Button variant="outline" size="sm" autoFocus onClick={onClose}>
+        <Button variant="outline" size="sm" onClick={onClose}>
           Close
         </Button>
         <Button

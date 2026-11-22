@@ -17,6 +17,7 @@ export type Phase = "idle" | "break";
 export type BreakKind = "micro" | "long";
 
 export interface Settings {
+  schema_version: number;
   microbreak_interval_min: number;
   microbreak_duration_sec: number;
   long_break_duration_min: number;
@@ -49,6 +50,6 @@ export interface SchedulerSnapshot {
   breaks_done: number;
   paused: boolean;
   break_paused: boolean;
-  pause_remaining: number;
+  revision: number;
   settings: Settings;
 }

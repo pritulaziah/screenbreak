@@ -1,7 +1,7 @@
-import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import type { CustomBackground } from "@/lib/types";
+import { useDialogFocus } from "@/lib/useDialogFocus";
 
 interface DeleteBackgroundDialogProps {
   background: CustomBackground;
@@ -16,14 +16,7 @@ export function DeleteBackgroundDialog({
   onCancel,
   onConfirm,
 }: DeleteBackgroundDialogProps) {
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape" && !busy) onCancel();
-    }
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [busy, onCancel]);
+  const dialogRef = useDialogFocus<HTMLDivElement>(onCancel);
 
   return createPortal(
     <div
@@ -31,11 +24,10 @@ export function DeleteBackgroundDialog({
       aria-modal="true"
       aria-label="Remove image"
       className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-6 backdrop-blur-sm"
-      onClick={() => {
-        if (!busy) onCancel();
-      }}
+      onClick={onCancel}
     >
       <div
+        ref={dialogRef}
         className="flex w-full max-w-[440px] items-center gap-4 rounded-[22px] border border-border/70 bg-popover p-4 text-popover-foreground shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
@@ -54,7 +46,6 @@ export function DeleteBackgroundDialog({
             <Button
               variant="outline"
               size="sm"
-              autoFocus
               disabled={busy}
               onClick={onCancel}
             >

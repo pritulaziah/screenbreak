@@ -1,6 +1,7 @@
 use base64::{Engine, engine::general_purpose::STANDARD};
 use serde::{Deserialize, Serialize};
 use std::fs;
+use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Manager};
@@ -8,11 +9,27 @@ use tauri::{AppHandle, Manager};
 const PREFIX: &str = "break-background-";
 const MANIFEST: &str = "break-backgrounds.json";
 const MAX_BYTES: usize = 25 * 1024 * 1024;
+const SCHEMA_VERSION: u32 = 1;
 
-#[derive(Debug, Default, Deserialize, Serialize)]
+fn current_schema_version() -> u32 {
+    SCHEMA_VERSION
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 struct Manifest {
+    #[serde(default = "current_schema_version")]
+    schema_version: u32,
     #[serde(default)]
     order: Vec<String>,
+}
+
+impl Default for Manifest {
+    fn default() -> Self {
+        Self {
+            schema_version: SCHEMA_VERSION,
+            order: Vec::new(),
+        }
+    }
 }
 
 fn app_dir(app: &AppHandle) -> Option<PathBuf> {
@@ -37,6 +54,10 @@ fn is_background_file(path: &Path) -> bool {
         .is_some_and(|name| name.starts_with(PREFIX))
 }
 
+fn is_allowed_target(dir: &Path, target: &Path) -> bool {
+    target.parent() == Some(dir) && is_background_file(target)
+}
+
 fn file_name(path: &Path) -> Option<String> {
     path.file_name()
         .and_then(|name| name.to_str())
@@ -54,7 +75,7 @@ fn background_files(app: &AppHandle) -> Vec<PathBuf> {
     let mut files: Vec<PathBuf> = entries
         .flatten()
         .map(|entry| entry.path())
-        .filter(|path| is_background_file(path))
+        .filter(|path| path.is_file() && is_background_file(path))
         .collect();
 
     files.sort();
@@ -66,22 +87,38 @@ fn manifest_path(app: &AppHandle) -> Option<PathBuf> {
 }
 
 fn load_manifest(app: &AppHandle) -> Manifest {
-    manifest_path(app)
-        .and_then(|path| fs::read_to_string(path).ok())
-        .and_then(|raw| serde_json::from_str(&raw).ok())
-        .unwrap_or_default()
+    let Some(path) = manifest_path(app) else {
+        return Manifest::default();
+    };
+    let Ok(raw) = fs::read_to_string(&path) else {
+        return Manifest::default();
+    };
+
+    match serde_json::from_str::<Manifest>(&raw) {
+        Ok(manifest) => manifest,
+        Err(error) => {
+            eprintln!("cannot read {MANIFEST}: {error}");
+            let _ = fs::copy(&path, path.with_extension("json.bad"));
+            Manifest::default()
+        }
+    }
 }
 
-fn save_manifest(app: &AppHandle, manifest: &Manifest) {
-    let Some(path) = manifest_path(app) else {
-        return;
-    };
+fn atomic_write(path: &Path, bytes: &[u8]) -> Result<(), String> {
     if let Some(parent) = path.parent() {
-        let _ = fs::create_dir_all(parent);
+        fs::create_dir_all(parent).map_err(|error| error.to_string())?;
     }
-    if let Ok(raw) = serde_json::to_string_pretty(manifest) {
-        let _ = fs::write(path, raw);
-    }
+
+    let temp = path.with_extension("json.tmp");
+    fs::write(&temp, bytes).map_err(|error| error.to_string())?;
+    fs::rename(&temp, path).map_err(|error| error.to_string())
+}
+
+fn save_manifest(app: &AppHandle, manifest: &Manifest) -> Result<(), String> {
+    let path =
+        manifest_path(app).ok_or_else(|| "The app data folder is not available.".to_string())?;
+    let raw = serde_json::to_string_pretty(manifest).map_err(|error| error.to_string())?;
+    atomic_write(&path, raw.as_bytes())
 }
 
 fn ordered_names(app: &AppHandle) -> Vec<String> {
@@ -119,6 +156,12 @@ pub fn list(app: &AppHandle) -> Vec<String> {
 
 fn decode_image(data: &str) -> Result<Vec<u8>, String> {
     let encoded = data.split_once(',').map_or(data, |(_, body)| body);
+    let max_encoded = (MAX_BYTES / 3 + 1) * 4;
+
+    if encoded.len() > max_encoded {
+        return Err("The image is larger than 25 MB.".into());
+    }
+
     let bytes = STANDARD
         .decode(encoded)
         .map_err(|_| "The image data is not valid.".to_string())?;
@@ -149,17 +192,23 @@ fn write_unique(dir: &Path, bytes: &[u8], extension: &str) -> Result<PathBuf, St
     Ok(path)
 }
 
-fn add_to_manifest(app: &AppHandle, name: String) {
+fn add_to_manifest(app: &AppHandle, name: String) -> Result<(), String> {
     let mut order = ordered_names(app);
     order.retain(|item| item != &name);
     order.push(name);
-    save_manifest(app, &Manifest { order });
+    save_manifest(
+        app,
+        &Manifest {
+            schema_version: SCHEMA_VERSION,
+            order,
+        },
+    )
 }
 
-fn remove_from_manifest(app: &AppHandle, name: &str) {
+fn remove_from_manifest(app: &AppHandle, name: &str) -> Result<(), String> {
     let mut manifest = load_manifest(app);
     manifest.order.retain(|item| item != name);
-    save_manifest(app, &manifest);
+    save_manifest(app, &manifest)
 }
 
 pub fn save(app: &AppHandle, data: &str) -> Result<String, String> {
@@ -171,8 +220,14 @@ pub fn save(app: &AppHandle, data: &str) -> Result<String, String> {
     fs::create_dir_all(&dir).map_err(|error| error.to_string())?;
 
     let path = write_unique(&dir, &bytes, extension)?;
-    if let Some(name) = file_name(&path) {
-        add_to_manifest(app, name);
+    let Some(name) = file_name(&path) else {
+        let _ = fs::remove_file(&path);
+        return Err("Cannot save the image.".into());
+    };
+
+    if let Err(error) = add_to_manifest(app, name) {
+        let _ = fs::remove_file(&path);
+        return Err(error);
     }
 
     Ok(path.to_string_lossy().into_owned())
@@ -189,7 +244,7 @@ pub fn replace(app: &AppHandle, target: &str, data: &str) -> Result<String, Stri
     let canonical_dir = fs::canonicalize(&dir).map_err(|error| error.to_string())?;
     let target_path =
         fs::canonicalize(target).map_err(|_| "The image was not found.".to_string())?;
-    if target_path.parent() != Some(canonical_dir.as_path()) || !is_background_file(&target_path) {
+    if !is_allowed_target(&canonical_dir, &target_path) {
         return Err("The image was not found.".into());
     }
 
@@ -199,7 +254,12 @@ pub fn replace(app: &AppHandle, target: &str, data: &str) -> Result<String, Stri
     let path = write_unique(&dir, &bytes, extension)?;
     let new_name = file_name(&path).ok_or_else(|| "Cannot save the image.".to_string())?;
 
-    let _ = fs::remove_file(&target_path);
+    if let Err(error) = fs::remove_file(&target_path) {
+        if error.kind() != ErrorKind::NotFound {
+            let _ = fs::remove_file(&path);
+            return Err(error.to_string());
+        }
+    }
 
     match old_name {
         Some(old_name) => match order.iter().position(|item| item == &old_name) {
@@ -208,48 +268,48 @@ pub fn replace(app: &AppHandle, target: &str, data: &str) -> Result<String, Stri
         },
         None => order.push(new_name),
     }
-    save_manifest(app, &Manifest { order });
+
+    save_manifest(
+        app,
+        &Manifest {
+            schema_version: SCHEMA_VERSION,
+            order,
+        },
+    )?;
 
     Ok(path.to_string_lossy().into_owned())
 }
 
-fn remove_one(app: &AppHandle, target: &str) {
-    let Some(dir) = app_dir(app) else {
-        return;
-    };
-    let Ok(dir) = fs::canonicalize(dir) else {
-        return;
-    };
-    let Ok(target) = fs::canonicalize(target) else {
-        return;
-    };
+fn remove_one(app: &AppHandle, target: &str) -> Result<(), String> {
+    let dir = app_dir(app).ok_or_else(|| "The app data folder is not available.".to_string())?;
+    let dir = fs::canonicalize(dir).map_err(|error| error.to_string())?;
+    let target = fs::canonicalize(target).map_err(|_| "The image was not found.".to_string())?;
 
-    if target.parent() != Some(dir.as_path()) || !is_background_file(&target) {
-        return;
+    if !is_allowed_target(&dir, &target) {
+        return Err("The image was not found.".into());
     }
 
     let name = file_name(&target);
-    let _ = fs::remove_file(&target);
+    if let Err(error) = fs::remove_file(&target) {
+        if error.kind() != ErrorKind::NotFound {
+            return Err(error.to_string());
+        }
+    }
+
     if let Some(name) = name {
-        remove_from_manifest(app, &name);
+        if let Err(error) = remove_from_manifest(app, &name) {
+            eprintln!("cannot update {MANIFEST}: {error}");
+        }
     }
+
+    Ok(())
 }
 
-fn remove_all(app: &AppHandle) {
-    for path in background_files(app) {
-        let _ = fs::remove_file(path);
-    }
-    save_manifest(app, &Manifest::default());
+pub fn remove(app: &AppHandle, target: &str) -> Result<(), String> {
+    remove_one(app, target)
 }
 
-pub fn remove(app: &AppHandle, target: Option<&str>) {
-    match target {
-        Some(target) => remove_one(app, target),
-        None => remove_all(app),
-    }
-}
-
-pub fn reorder(app: &AppHandle, paths: &[String]) -> Vec<String> {
+pub fn reorder(app: &AppHandle, paths: &[String]) -> Result<Vec<String>, String> {
     let current = ordered_names(app);
     let mut order: Vec<String> = Vec::with_capacity(current.len());
 
@@ -267,8 +327,15 @@ pub fn reorder(app: &AppHandle, paths: &[String]) -> Vec<String> {
         }
     }
 
-    save_manifest(app, &Manifest { order });
-    list(app)
+    save_manifest(
+        app,
+        &Manifest {
+            schema_version: SCHEMA_VERSION,
+            order,
+        },
+    )?;
+
+    Ok(list(app))
 }
 
 pub fn download(app: &AppHandle, target: &str) -> Result<String, String> {
@@ -276,7 +343,7 @@ pub fn download(app: &AppHandle, target: &str) -> Result<String, String> {
     let canonical_dir = fs::canonicalize(&dir).map_err(|error| error.to_string())?;
     let target = fs::canonicalize(target).map_err(|_| "The image was not found.".to_string())?;
 
-    if target.parent() != Some(canonical_dir.as_path()) || !is_background_file(&target) {
+    if !is_allowed_target(&canonical_dir, &target) {
         return Err("The image was not found.".into());
     }
 
@@ -305,4 +372,57 @@ pub fn download(app: &AppHandle, target: &str) -> Result<String, String> {
 
     fs::copy(&target, &path).map_err(|error| error.to_string())?;
     Ok(path.to_string_lossy().into_owned())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn detects_supported_magic_bytes() {
+        assert_eq!(image_extension(b"\x89PNG\r\n\x1a\nrest"), Some("png"));
+        assert_eq!(image_extension(b"\xff\xd8\xffrest"), Some("jpg"));
+        assert_eq!(image_extension(b"RIFF\0\0\0\0WEBPrest"), Some("webp"));
+        assert_eq!(image_extension(b"GIF89a"), None);
+    }
+
+    #[test]
+    fn rejects_empty_and_invalid_image_data() {
+        assert_eq!(decode_image(""), Err("The image is empty.".into()));
+        assert_eq!(
+            decode_image("data:image/png;base64,!!!!"),
+            Err("The image data is not valid.".into())
+        );
+    }
+
+    #[test]
+    fn rejects_encoded_data_over_the_limit_before_decoding() {
+        let header = "data:image/png;base64,";
+        let oversized = "A".repeat((MAX_BYTES / 3 + 1) * 4 + 1);
+        assert_eq!(
+            decode_image(&format!("{header}{oversized}")),
+            Err("The image is larger than 25 MB.".into())
+        );
+    }
+
+    #[test]
+    fn only_prefixed_files_in_the_app_dir_are_targets() {
+        let dir = Path::new("C:/app");
+        assert!(is_allowed_target(
+            dir,
+            Path::new("C:/app/break-background-1.png")
+        ));
+        assert!(!is_allowed_target(dir, Path::new("C:/app/settings.json")));
+        assert!(!is_allowed_target(
+            dir,
+            Path::new("C:/other/break-background-1.png")
+        ));
+    }
+
+    #[test]
+    fn manifest_defaults_to_the_current_schema() {
+        let manifest = Manifest::default();
+        assert_eq!(manifest.schema_version, SCHEMA_VERSION);
+        assert!(manifest.order.is_empty());
+    }
 }

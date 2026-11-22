@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { useSettings } from "@/lib/appState";
 import { playChime } from "@/lib/sound";
 import type { SoundTone } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 export function SoundSettings() {
   const { settings, update } = useSettings();
@@ -39,13 +40,13 @@ export function SoundSettings() {
 
         <Separator />
 
-        <div className="space-y-2">
-          <Label>Tone</Label>
+        <div className={cn("space-y-2", !settings.sound && "opacity-50")}>
+          <Label htmlFor="sound-tone">Tone</Label>
           <div className="flex gap-2">
             <div className="relative flex-1">
               <select
+                id="sound-tone"
                 value={settings.sound_tone}
-                aria-label="Tone"
                 onChange={(event) =>
                   update({ sound_tone: event.target.value as SoundTone })
                 }

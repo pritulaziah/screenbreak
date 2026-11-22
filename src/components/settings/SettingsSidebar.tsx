@@ -44,7 +44,10 @@ export function SettingsSidebar({
         </p>
       </div>
 
-      <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3 pb-3">
+      <nav
+        aria-label="Settings sections"
+        className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3 pb-3"
+      >
         {SETTINGS_TABS.map((item) => {
           const Icon = item.icon;
           const active = tab === item.id;
@@ -53,7 +56,7 @@ export function SettingsSidebar({
             <button
               key={item.id}
               type="button"
-              aria-current={active ? "page" : undefined}
+              aria-pressed={active}
               onClick={() => onTabChange(item.id)}
               className={cn(
                 "flex w-full shrink-0 items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium transition-all focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",

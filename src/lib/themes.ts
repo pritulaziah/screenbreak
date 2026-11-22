@@ -4,7 +4,6 @@ import type { ThemeId } from "./types";
 export interface ThemeMeta {
   id: ThemeId;
   name: string;
-  hint: string;
   description: string;
   icon: LucideIcon;
 }
@@ -13,21 +12,18 @@ export const THEMES: ThemeMeta[] = [
   {
     id: "cozy",
     name: "Cozy",
-    hint: "warm light and calm",
     description: "Soft amber light, a quiet room, and a sleeping cat.",
     icon: Sun,
   },
   {
     id: "night",
     name: "Night",
-    hint: "quiet and deep",
     description: "A crescent moon, city lights, and deep violet tones.",
     icon: Moon,
   },
   {
     id: "nature",
     name: "Nature",
-    hint: "fresh and green",
     description: "Sunlit leaves, plants, and a calm green room.",
     icon: Leaf,
   },

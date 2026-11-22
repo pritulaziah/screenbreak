@@ -6,6 +6,8 @@ Break reminders for the desktop. The screen stays available.
 
 ScreenBreak helps you take short breaks while you work at the computer. A card appears over other windows and does not block the screen.
 
+ScreenBreak runs on Windows 10 and 11.
+
 A micro break lasts 20 seconds and repeats every 10 minutes. Every third break is long and lasts 5 minutes.
 
 The app runs in the system tray. The tray menu opens the settings, starts a
@@ -24,7 +26,7 @@ break, pauses the schedule for one hour, skips a break, and quits the app.
 
 ## Run from source
 
-Requirements: Node.js 20.19 or later, Rust 1.87 or later, and the
+Requirements: Node.js 22.22.2 or later, Rust 1.87 or later, and the
 [Tauri system dependencies](https://tauri.app/start/prerequisites/).
 
 ```bash
@@ -38,8 +40,33 @@ Build the installer:
 npm run tauri build
 ```
 
+Icons are generated from `src-tauri/app-icon.svg`:
+
+```bash
+npx tauri icon src-tauri/app-icon.svg
+```
+
 The build signs the update artifacts. Set `TAURI_SIGNING_PRIVATE_KEY` and
 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` before you build the installer.
+
+## Tests
+
+Run the JavaScript tests:
+
+```bash
+npm test
+```
+
+Run the Rust tests and checks:
+
+```bash
+cd src-tauri
+cargo test
+cargo fmt --check
+cargo clippy --all-targets -- -D warnings
+```
+
+`npm run build` also typechecks `vite.config.ts` and `vitest.config.ts`.
 
 ## Release
 
@@ -48,13 +75,16 @@ version from that file. The version in `src-tauri/Cargo.toml` is the Rust
 crate version. Do not change it at release.
 
 1. The working tree must be clean.
-2. Run `npm version X.Y.Z`. The command updates `package.json` and
+2. Run `npm test` and the Rust checks from the Tests section.
+3. Run `npm version X.Y.Z`. The command updates `package.json` and
    `package-lock.json`, creates a commit, and creates the tag `vX.Y.Z`.
-3. Run `git push --follow-tags`.
+4. Run `git push --follow-tags`.
 
 The tag starts the release workflow. The workflow stops if the tag and the
-`package.json` version differ. Add the signing secrets before the first
-release with updates (see below).
+`package.json` version differ. It also runs the JavaScript tests, the Rust
+tests, `cargo fmt --check`, `cargo clippy`, and the build before it creates the
+installer. Add the signing secrets before the first release with updates (see
+below).
 
 Review the `ScreenBreak vX.Y.Z` draft release and publish it. The updater
 uses only published releases.

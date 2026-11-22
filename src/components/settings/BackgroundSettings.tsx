@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type DragEvent } from "react";
 import {
+  ArrowDown,
+  ArrowUp,
   Download,
   Eye,
   GripVertical,
@@ -29,6 +31,7 @@ interface MenuItemProps {
   icon: LucideIcon;
   label: string;
   destructive?: boolean;
+  disabled?: boolean;
   onClick: () => void;
 }
 
@@ -36,14 +39,17 @@ function MenuItem({
   icon: Icon,
   label,
   destructive = false,
+  disabled = false,
   onClick,
 }: MenuItemProps) {
   return (
     <button
       type="button"
+      role="menuitem"
+      disabled={disabled}
       onClick={onClick}
       className={cn(
-        "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+        "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-40",
         destructive
           ? "text-destructive hover:bg-destructive/10"
           : "text-foreground hover:bg-foreground/8",
@@ -146,6 +152,8 @@ export function BackgroundSettings() {
   }
 
   async function addImages(files: File[]) {
+    if (busy) return;
+
     setError(null);
     setBusy(true);
     try {
@@ -158,16 +166,16 @@ export function BackgroundSettings() {
     }
   }
 
-  async function remove(path?: string) {
+  async function remove(path: string) {
     if (busy) return;
 
     setError(null);
     setBusy(true);
     try {
       await removeBackground(path);
-      if (!path || path === preview?.path) setPreview(null);
-      if (!path || path === deleteTarget?.path) setDeleteTarget(null);
-      if (path && path === replacePath) setReplacePath(null);
+      if (path === preview?.path) setPreview(null);
+      if (path === deleteTarget?.path) setDeleteTarget(null);
+      if (path === replacePath) setReplacePath(null);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
       setDeleteTarget(null);
@@ -199,7 +207,22 @@ export function BackgroundSettings() {
     }
   }
 
+  function moveBackground(path: string, delta: number) {
+    if (busy) return;
+
+    const paths = customBackgrounds.map((background) => background.path);
+    const from = paths.indexOf(path);
+    const to = from + delta;
+    if (from < 0 || to < 0 || to >= paths.length) return;
+
+    const next = [...paths];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    void reorder(next);
+  }
+
   function startReplace(path: string) {
+    if (busy) return;
     setReplacePath(path);
     replaceInput.current?.click();
   }
@@ -207,8 +230,8 @@ export function BackgroundSettings() {
   async function handleReplace(file: File) {
     if (!replacePath || busy) return;
 
-    if (!isAcceptedImage(file)) {
-      setError("Use PNG, JPEG, or WebP images.");
+    if (!(await isAcceptedImage(file))) {
+      setError("Use PNG, JPEG, or WebP images up to 25 MB.");
       setReplacePath(null);
       return;
     }
@@ -220,6 +243,7 @@ export function BackgroundSettings() {
     try {
       await replaceBackground(path, file);
       if (preview?.path === path) setPreview(null);
+      if (deleteTarget?.path === path) setDeleteTarget(null);
       showStatus("Image replaced.");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
@@ -247,16 +271,20 @@ export function BackgroundSettings() {
     if (dragDepth.current === 0) setDragging(false);
   }
 
-  function handleDrop(event: DragEvent) {
-    if (!event.dataTransfer.types.includes("Files")) return;
+  async function handleDrop(event: DragEvent) {
+    if (!event.dataTransfer.types.includes("Files") || busy) return;
     event.preventDefault();
     dragDepth.current = 0;
     setDragging(false);
 
     const files = Array.from(event.dataTransfer.files);
-    const images = files.filter(isAcceptedImage);
+    const images: File[] = [];
+    for (const file of files) {
+      if (await isAcceptedImage(file)) images.push(file);
+    }
+
     if (images.length === 0) {
-      setError("Use PNG, JPEG, or WebP images.");
+      setError("Use PNG, JPEG, or WebP images up to 25 MB.");
       return;
     }
 
@@ -352,7 +380,7 @@ export function BackgroundSettings() {
 
         {customBackgrounds.length > 0 ? (
           <div className="grid grid-cols-2 gap-3 min-[900px]:grid-cols-3">
-            {customBackgrounds.map((background) => (
+            {customBackgrounds.map((background, index) => (
               <div
                 key={background.path}
                 className={cn(
@@ -415,7 +443,9 @@ export function BackgroundSettings() {
                 {menuFor === background.path ? (
                   <div
                     data-background-menu
-                    className="absolute right-0 top-9 z-30 w-40 rounded-xl border border-border/70 bg-popover p-1 text-popover-foreground shadow-xl"
+                    role="menu"
+                    aria-label="Image actions"
+                    className="absolute right-0 top-9 z-30 w-44 rounded-xl border border-border/70 bg-popover p-1 text-popover-foreground shadow-xl"
                     onClick={(event) => event.stopPropagation()}
                   >
                     <MenuItem
@@ -429,14 +459,34 @@ export function BackgroundSettings() {
                     <MenuItem
                       icon={ImageUp}
                       label="Replace"
+                      disabled={busy}
                       onClick={() => {
                         setMenuFor(null);
                         startReplace(background.path);
                       }}
                     />
                     <MenuItem
+                      icon={ArrowUp}
+                      label="Move up"
+                      disabled={busy || index === 0}
+                      onClick={() => {
+                        setMenuFor(null);
+                        moveBackground(background.path, -1);
+                      }}
+                    />
+                    <MenuItem
+                      icon={ArrowDown}
+                      label="Move down"
+                      disabled={busy || index === customBackgrounds.length - 1}
+                      onClick={() => {
+                        setMenuFor(null);
+                        moveBackground(background.path, 1);
+                      }}
+                    />
+                    <MenuItem
                       icon={Download}
                       label="Download"
+                      disabled={busy}
                       onClick={() => {
                         setMenuFor(null);
                         void download(background);
@@ -447,6 +497,7 @@ export function BackgroundSettings() {
                       icon={Trash2}
                       label="Delete"
                       destructive
+                      disabled={busy}
                       onClick={() => {
                         setMenuFor(null);
                         setDeleteTarget(background);

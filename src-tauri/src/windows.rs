@@ -25,6 +25,10 @@ pub fn reminder_size(size: &str, orientation: &str) -> (f64, f64) {
     }
 }
 
+pub fn reminder_should_show(snapshot: &Snapshot) -> bool {
+    !snapshot.paused && matches!(snapshot.phase, Phase::Break)
+}
+
 pub fn create_reminder_window(app: &AppHandle, settings: &Settings) -> tauri::Result<()> {
     let (width, height) = reminder_size(&settings.notification_size, &settings.card_orientation);
     let window = WebviewWindowBuilder::new(
@@ -100,21 +104,27 @@ pub fn update_reminder_window(app: &AppHandle, settings: &Settings) {
     );
 }
 
+/// Shows the reminder without taking focus from the active window.
+///
+/// The window is focusable again after `show`, so a click can still activate it
+/// and keyboard users can operate the card. `set_focusable(false)` adds
+/// `WS_EX_NOACTIVATE` for the show itself; `set_focusable(true)` removes it
+/// without a `SetForegroundWindow` call.
 pub fn show_reminder(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("reminder") {
-        // Do not call `ShowWindow` directly here. The window runtime tracks the
-        // visibility flag, and `hide` is a no-op when that flag never changed.
-        // `show` uses `SW_SHOWNOACTIVATE` because the window is built with
-        // `focused(false)`, so it does not take focus.
-        let _ = window.show();
-        REMINDER_VISIBLE.store(true, Ordering::Relaxed);
+        let _ = window.set_focusable(false);
+        if window.show().is_ok() {
+            REMINDER_VISIBLE.store(true, Ordering::Relaxed);
+            let _ = window.set_focusable(true);
+        }
     }
 }
 
 pub fn hide_reminder(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("reminder") {
-        let _ = window.hide();
-        REMINDER_VISIBLE.store(false, Ordering::Relaxed);
+        if window.hide().is_ok() {
+            REMINDER_VISIBLE.store(false, Ordering::Relaxed);
+        }
     }
 }
 
@@ -128,7 +138,7 @@ pub fn note_reminder_hidden() {
 /// A visible reminder window covers the desktop, so it must be hidden as soon
 /// as the break ends. Otherwise it keeps receiving mouse clicks.
 pub fn sync_reminder(app: &AppHandle, snapshot: &Snapshot) {
-    let should_show = !snapshot.paused && matches!(snapshot.phase, Phase::Break);
+    let should_show = reminder_should_show(snapshot);
 
     if should_show == REMINDER_VISIBLE.load(Ordering::Relaxed) {
         return;
@@ -146,5 +156,47 @@ pub fn show_main(app: &AppHandle) {
         let _ = window.unminimize();
         let _ = window.show();
         let _ = window.set_focus();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::scheduler::BreakKind;
+
+    fn snapshot(phase: Phase, paused: bool) -> Snapshot {
+        Snapshot {
+            phase,
+            kind: BreakKind::Micro,
+            remaining: 20,
+            duration: 20,
+            next_in: 600,
+            breaks_done: 0,
+            paused,
+            break_paused: false,
+            revision: 0,
+            settings: Settings::default(),
+        }
+    }
+
+    #[test]
+    fn reminder_shows_only_during_an_unpaused_break() {
+        assert!(!reminder_should_show(&snapshot(Phase::Idle, false)));
+        assert!(reminder_should_show(&snapshot(Phase::Break, false)));
+        assert!(!reminder_should_show(&snapshot(Phase::Break, true)));
+        assert!(!reminder_should_show(&snapshot(Phase::Idle, true)));
+    }
+
+    #[test]
+    fn reminder_size_covers_every_size_and_orientation() {
+        let sizes = ["compact", "normal", "large"];
+        let orientations = ["horizontal", "vertical"];
+
+        for size in sizes {
+            for orientation in orientations {
+                let (width, height) = reminder_size(size, orientation);
+                assert!(width > 0.0 && height > 0.0);
+            }
+        }
     }
 }

@@ -2,95 +2,137 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { parse } from "yaml";
 
 const workflowPath = fileURLToPath(
   new URL("../.github/workflows/release.yml", import.meta.url),
 );
+const ciPath = fileURLToPath(
+  new URL("../.github/workflows/ci.yml", import.meta.url),
+);
 
-function readWorkflow() {
-  return readFileSync(workflowPath, "utf8");
+function readWorkflow(path = workflowPath) {
+  return parse(readFileSync(path, "utf8"));
+}
+
+function stepsOf(workflow) {
+  return workflow.jobs.release.steps;
+}
+
+function stepByRun(steps, command) {
+  return steps.find((step) => step.run?.includes(command));
 }
 
 test("declares the tag trigger", () => {
   const workflow = readWorkflow();
 
-  assert.match(workflow, /^on:\s*$/m);
-  assert.match(workflow, /^\s+push:\s*$/m);
-  assert.match(workflow, /^\s+tags:\s*\n\s+- ["']?v\*["']?\s*$/m);
+  assert.deepEqual(workflow.on.push.tags, ["v*"]);
 });
 
 test("grants contents write permission", () => {
   const workflow = readWorkflow();
 
-  assert.match(workflow, /^permissions:\s*$/m);
-  assert.match(workflow, /^\s+contents:\s*write\s*$/m);
+  assert.equal(workflow.permissions.contents, "write");
 });
 
 test("serializes runs for the same tag", () => {
   const workflow = readWorkflow();
 
-  assert.ok(workflow.includes("group: release-${{ github.ref }}"));
-  assert.match(workflow, /^\s+cancel-in-progress:\s*false\s*$/m);
+  assert.equal(workflow.concurrency.group, "release-${{ github.ref }}");
+  assert.equal(workflow.concurrency["cancel-in-progress"], false);
 });
 
 test("sets the 60 minute timeout", () => {
-  assert.match(readWorkflow(), /^\s+timeout-minutes:\s*60\s*$/m);
+  assert.equal(readWorkflow().jobs.release["timeout-minutes"], 60);
 });
 
-test("uses the Windows runner and pinned build actions", () => {
+test("uses the Windows runner and immutable action pins", () => {
   const workflow = readWorkflow();
+  const steps = stepsOf(workflow);
 
-  for (const expected of [
-    "runs-on: windows-latest",
-    "node-version: 22",
-    "cache: npm",
-    "rustup default stable",
-    "npm ci",
-    "actions/checkout@v7",
-    "actions/setup-node@v7",
-    "Swatinem/rust-cache@v2",
-    'workspaces: "src-tauri -> target"',
-    "tauri-apps/tauri-action@v1",
-  ]) {
-    assert.ok(
-      workflow.includes(expected),
-      `Expected workflow to include ${expected}`,
+  assert.equal(workflow.jobs.release["runs-on"], "windows-latest");
+
+  for (const step of steps.filter((item) => item.uses)) {
+    assert.match(
+      step.uses,
+      /@[0-9a-f]{40}$/,
+      `${step.name} must pin a full commit SHA`,
     );
   }
+
+  const node = steps.find((step) => step.name === "Set up Node.js");
+  assert.equal(node.with["node-version"], 22);
+  assert.equal(node.with.cache, "npm");
+
+  assert.ok(stepByRun(steps, "rustup default stable"));
+  assert.ok(stepByRun(steps, "npm ci"));
+  assert.ok(stepByRun(steps, "node scripts/check-release-version.mjs"));
+  assert.ok(stepByRun(steps, "npm test"));
+  assert.ok(stepByRun(steps, "npm run build"));
+  assert.ok(stepByRun(steps, "cargo test --locked"));
+  assert.ok(stepByRun(steps, "cargo fmt --check"));
+  assert.ok(stepByRun(steps, "cargo clippy --all-targets --locked -- -D warnings"));
 });
 
-test("runs the version check before the release action", () => {
-  const workflow = readWorkflow();
-  const versionCheck = workflow.indexOf(
-    "node scripts/check-release-version.mjs",
-  );
-  const releaseAction = workflow.indexOf("tauri-apps/tauri-action@v1");
+test("runs the version check and tests before the release action", () => {
+  const steps = stepsOf(readWorkflow());
+  const names = steps.map((step) => step.name);
+  const release = names.indexOf("Build and draft release");
 
-  assert.notEqual(versionCheck, -1, "Version check step is missing");
-  assert.notEqual(releaseAction, -1, "Release action is missing");
-  assert.ok(
-    versionCheck < releaseAction,
-    "Version check must run before the release action",
-  );
+  assert.notEqual(release, -1, "Release action is missing");
+
+  for (const name of [
+    "Check release version",
+    "Run tests",
+    "Typecheck and build",
+    "Run Rust tests",
+    "Check Rust formatting",
+    "Lint Rust",
+  ]) {
+    const index = names.indexOf(name);
+    assert.notEqual(index, -1, `${name} is missing`);
+    assert.ok(index < release, `${name} must run before the release action`);
+    assert.ok(!steps[index].if, `${name} must not be conditional`);
+    assert.ok(
+      !steps[index]["continue-on-error"],
+      `${name} must not continue on error`,
+    );
+  }
 });
 
 test("passes the draft release inputs", () => {
-  const workflow = readWorkflow();
+  const steps = stepsOf(readWorkflow());
+  const release = steps.find((step) => step.name === "Build and draft release");
 
-  for (const expected of [
-    "secrets.GITHUB_TOKEN",
-    "args: --bundles nsis",
-    "tagName: ${{ github.ref_name }}",
-    "releaseName: ScreenBreak ${{ github.ref_name }}",
-    "releaseDraft: true",
-    "generateReleaseNotes: true",
-    "uploadUpdaterJson: true",
-    "secrets.TAURI_SIGNING_PRIVATE_KEY",
-    "secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD",
-  ]) {
-    assert.ok(
-      workflow.includes(expected),
-      `Expected workflow to include ${expected}`,
-    );
-  }
+  assert.equal(release.with.args, "--bundles nsis");
+  assert.equal(release.with.tagName, "${{ github.ref_name }}");
+  assert.equal(
+    release.with.releaseName,
+    "ScreenBreak ${{ github.ref_name }}",
+  );
+  assert.equal(release.with.releaseDraft, true);
+  assert.equal(release.with.generateReleaseNotes, true);
+  assert.equal(release.with.uploadUpdaterJson, true);
+  assert.equal(
+    release.env.TAURI_SIGNING_PRIVATE_KEY,
+    "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}",
+  );
+  assert.equal(
+    release.env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD,
+    "${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}",
+  );
+});
+
+test("the CI workflow runs the same checks on pushes and pull requests", () => {
+  const workflow = readWorkflow(ciPath);
+  const steps = workflow.jobs.check.steps;
+
+  assert.equal(workflow.jobs.check["runs-on"], "windows-latest");
+  assert.ok("push" in workflow.on);
+  assert.ok("pull_request" in workflow.on);
+  assert.ok(stepByRun(steps, "npm test"));
+  assert.ok(stepByRun(steps, "npm run build"));
+  assert.ok(stepByRun(steps, "cargo test --locked"));
+  assert.ok(stepByRun(steps, "cargo fmt --check"));
+  assert.ok(stepByRun(steps, "cargo clippy --all-targets --locked -- -D warnings"));
 });

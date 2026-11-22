@@ -12,6 +12,12 @@ use tauri::{AppHandle, Emitter, Manager, WindowEvent};
 use tray::{setup_tray, update_tray};
 use windows::{create_reminder_window, show_main, sync_reminder, update_reminder_window};
 
+fn broadcast(app: &AppHandle, snapshot: &Snapshot) {
+    let _ = app.emit("scheduler:update", snapshot);
+    update_tray(app, snapshot);
+    sync_reminder(app, snapshot);
+}
+
 fn mutate_and_broadcast(
     app: &AppHandle,
     state: &Mutex<Scheduler>,
@@ -23,11 +29,14 @@ fn mutate_and_broadcast(
         scheduler.snapshot()
     };
 
-    let _ = app.emit("scheduler:update", &snapshot);
-    update_tray(app, &snapshot);
-    sync_reminder(app, &snapshot);
-
+    broadcast(app, &snapshot);
     snapshot
+}
+
+fn geometry_changed(old: &Settings, new: &Settings) -> bool {
+    old.notification_size != new.notification_size
+        || old.card_orientation != new.card_orientation
+        || old.position != new.position
 }
 
 #[tauri::command]
@@ -49,18 +58,18 @@ fn get_custom_backgrounds(app: AppHandle) -> Vec<String> {
 }
 
 #[tauri::command]
-fn remove_custom_background(app: AppHandle, path: Option<String>) -> Vec<String> {
-    custom_background::remove(&app, path.as_deref());
+fn remove_custom_background(app: AppHandle, path: String) -> Result<Vec<String>, String> {
+    custom_background::remove(&app, &path)?;
     let paths = custom_background::list(&app);
     let _ = app.emit("custom-background:update", &paths);
-    paths
+    Ok(paths)
 }
 
 #[tauri::command]
-fn reorder_custom_backgrounds(app: AppHandle, paths: Vec<String>) -> Vec<String> {
-    let paths = custom_background::reorder(&app, &paths);
+fn reorder_custom_backgrounds(app: AppHandle, paths: Vec<String>) -> Result<Vec<String>, String> {
+    let paths = custom_background::reorder(&app, &paths)?;
     let _ = app.emit("custom-background:update", &paths);
-    paths
+    Ok(paths)
 }
 
 #[tauri::command]
@@ -85,25 +94,42 @@ fn update_settings(
     app: AppHandle,
     state: tauri::State<Mutex<Scheduler>>,
     settings: Settings,
-) -> Snapshot {
+) -> Result<Snapshot, String> {
     let settings = settings.sanitize();
-    save_settings(&app, &settings);
-    update_reminder_window(&app, &settings);
+    let geometry = {
+        let scheduler = state.lock().unwrap();
+        geometry_changed(&scheduler.settings, &settings)
+    };
 
-    mutate_and_broadcast(&app, state.inner(), |scheduler| {
+    save_settings(&app, &settings)?;
+    if geometry {
+        update_reminder_window(&app, &settings);
+    }
+
+    Ok(mutate_and_broadcast(&app, state.inner(), |scheduler| {
         scheduler.update_settings(settings);
-    })
+    }))
 }
 
 #[tauri::command]
-fn reset_settings(app: AppHandle, state: tauri::State<Mutex<Scheduler>>) -> Snapshot {
-    let settings = Settings::default();
-    save_settings(&app, &settings);
-    update_reminder_window(&app, &settings);
+fn reset_settings(
+    app: AppHandle,
+    state: tauri::State<Mutex<Scheduler>>,
+) -> Result<Snapshot, String> {
+    let settings = Settings::default().sanitize();
+    let geometry = {
+        let scheduler = state.lock().unwrap();
+        geometry_changed(&scheduler.settings, &settings)
+    };
 
-    mutate_and_broadcast(&app, state.inner(), |scheduler| {
+    save_settings(&app, &settings)?;
+    if geometry {
+        update_reminder_window(&app, &settings);
+    }
+
+    Ok(mutate_and_broadcast(&app, state.inner(), |scheduler| {
         scheduler.update_settings(settings);
-    })
+    }))
 }
 
 #[tauri::command]
@@ -128,11 +154,6 @@ fn toggle_pause(app: AppHandle, state: tauri::State<Mutex<Scheduler>>) -> Snapsh
     mutate_and_broadcast(&app, state.inner(), |scheduler| {
         scheduler.toggle_pause(SystemTime::now())
     })
-}
-
-#[tauri::command]
-fn show_now(app: AppHandle, state: tauri::State<Mutex<Scheduler>>) -> Snapshot {
-    mutate_and_broadcast(&app, state.inner(), |scheduler| scheduler.show_now())
 }
 
 pub(crate) fn show_now_from_tray(app: &AppHandle) {
@@ -171,9 +192,7 @@ fn start_scheduler_loop(app: AppHandle) {
                 scheduler.snapshot()
             };
 
-            let _ = app.emit("scheduler:update", &snapshot);
-            update_tray(&app, &snapshot);
-            sync_reminder(&app, &snapshot);
+            broadcast(&app, &snapshot);
         }
     });
 }
@@ -185,7 +204,6 @@ pub fn run() {
             show_main(app);
         }))
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .plugin(tauri_plugin_process::init())
         .setup(|app| {
             let settings = load_settings(app.handle());
             app.manage(Mutex::new(Scheduler::new(settings.clone())));
@@ -216,7 +234,6 @@ pub fn run() {
             end_break,
             toggle_break_pause,
             toggle_pause,
-            show_now,
             reset_settings
         ])
         .run(tauri::generate_context!())

@@ -2,7 +2,7 @@ import { ReminderCardView } from "@/components/reminder/ReminderCardView";
 import { useAppState } from "@/lib/appState";
 import { formatTimer } from "@/lib/format";
 
-export function ReminderCard() {
+export function ReminderCard({ backgroundUrl }: { backgroundUrl?: string }) {
   const { snapshot, snooze, endBreak, toggleBreakPause } = useAppState();
   if (!snapshot) return null;
 
@@ -21,8 +21,7 @@ export function ReminderCard() {
       label={label}
       time={formatTimer(snapshot.remaining)}
       progress={progress}
-      backgroundIndex={snapshot.breaks_done}
-      randomBackground={snapshot.settings.background_random}
+      backgroundUrl={backgroundUrl}
       theme={snapshot.settings.theme}
       orientation={snapshot.settings.card_orientation}
       showCountdown={snapshot.settings.show_countdown}

@@ -26,7 +26,7 @@ pub struct Snapshot {
     pub breaks_done: u64,
     pub paused: bool,
     pub break_paused: bool,
-    pub pause_remaining: u64,
+    pub revision: u64,
     pub settings: Settings,
 }
 
@@ -40,6 +40,7 @@ pub struct Scheduler {
     breaks_done: u64,
     break_paused: bool,
     paused_until: Option<SystemTime>,
+    revision: u64,
 }
 
 impl Scheduler {
@@ -56,6 +57,7 @@ impl Scheduler {
             breaks_done: 0,
             break_paused: false,
             paused_until: None,
+            revision: 0,
         }
     }
 
@@ -71,20 +73,17 @@ impl Scheduler {
             breaks_done: self.breaks_done,
             paused: self.is_paused(now),
             break_paused: self.break_paused,
-            pause_remaining: self.pause_remaining(now),
+            revision: self.revision,
             settings: self.settings.clone(),
         }
     }
 
-    pub fn is_paused(&self, now: SystemTime) -> bool {
-        self.paused_until.map(|until| until > now).unwrap_or(false)
+    fn bump(&mut self) {
+        self.revision = self.revision.wrapping_add(1);
     }
 
-    pub fn pause_remaining(&self, now: SystemTime) -> u64 {
-        self.paused_until
-            .and_then(|until| until.duration_since(now).ok())
-            .map(|duration| duration.as_secs())
-            .unwrap_or(0)
+    pub fn is_paused(&self, now: SystemTime) -> bool {
+        self.paused_until.map(|until| until > now).unwrap_or(false)
     }
 
     pub fn tick(&mut self, now: SystemTime) {
@@ -114,11 +113,14 @@ impl Scheduler {
                 }
             }
         }
+
+        self.bump();
     }
 
     fn begin_break(&mut self) {
         self.phase = Phase::Break;
-        self.kind = if (self.breaks_done + 1).is_multiple_of(self.settings.long_break_every) {
+        let every = self.settings.long_break_every.max(1);
+        self.kind = if (self.breaks_done + 1).is_multiple_of(every) {
             BreakKind::Long
         } else {
             BreakKind::Micro
@@ -138,11 +140,14 @@ impl Scheduler {
         self.remaining = 0;
         self.duration = 0;
         self.break_paused = false;
+        self.paused_until = None;
+        self.bump();
     }
 
     pub fn end_break(&mut self) {
         if self.phase == Phase::Break {
             self.finish_break();
+            self.bump();
         }
     }
 
@@ -163,12 +168,14 @@ impl Scheduler {
             self.duration = 0;
             self.breaks_done += 1;
             self.break_paused = false;
+            self.bump();
         }
     }
 
     pub fn toggle_break_pause(&mut self) {
         if self.phase == Phase::Break {
             self.break_paused = !self.break_paused;
+            self.bump();
         }
     }
 
@@ -178,25 +185,28 @@ impl Scheduler {
         } else {
             self.paused_until = Some(now + Duration::from_secs(60 * 60));
         }
+        self.bump();
     }
 
     pub fn show_now(&mut self) {
+        if self.phase == Phase::Break {
+            return;
+        }
+
         self.paused_until = None;
         self.phase = Phase::Idle;
         self.next_in = 0;
         self.begin_break();
+        self.bump();
     }
 
     pub fn update_settings(&mut self, settings: Settings) {
-        let schedule_changed = settings.microbreak_interval_min
-            != self.settings.microbreak_interval_min
-            || settings.microbreak_duration_sec != self.settings.microbreak_duration_sec
-            || settings.long_break_duration_min != self.settings.long_break_duration_min
-            || settings.long_break_every != self.settings.long_break_every;
+        let interval_changed =
+            settings.microbreak_interval_min != self.settings.microbreak_interval_min;
 
         self.settings = settings;
 
-        if schedule_changed && self.phase == Phase::Idle {
+        if interval_changed && self.phase == Phase::Idle {
             self.next_in = self.settings.microbreak_interval_min * 60;
         }
 
@@ -206,11 +216,16 @@ impl Scheduler {
                 BreakKind::Long => self.settings.long_break_duration_min * 60,
             };
 
-            if new_duration != self.duration {
-                self.duration = new_duration;
+            if new_duration > self.duration {
+                self.remaining = self.remaining.saturating_add(new_duration - self.duration);
+            } else {
                 self.remaining = self.remaining.min(new_duration);
             }
+
+            self.duration = new_duration;
         }
+
+        self.bump();
     }
 }
 
@@ -293,6 +308,43 @@ mod tests {
     }
 
     #[test]
+    fn show_now_is_ignored_during_a_break() {
+        let mut scheduler = scheduler();
+
+        scheduler.show_now();
+        let remaining = scheduler.snapshot().remaining;
+        scheduler.show_now();
+
+        assert_eq!(scheduler.snapshot().remaining, remaining);
+    }
+
+    #[test]
+    fn snooze_clears_a_pause() {
+        let mut scheduler = scheduler();
+        let now = SystemTime::now();
+
+        scheduler.toggle_pause(now);
+        scheduler.snooze(5);
+
+        let snapshot = scheduler.snapshot();
+        assert!(!snapshot.paused);
+        assert_eq!(snapshot.next_in, 300);
+    }
+
+    #[test]
+    fn skip_advances_the_long_break_cadence() {
+        let mut scheduler = scheduler();
+
+        scheduler.show_now();
+        scheduler.skip();
+        scheduler.show_now();
+        scheduler.skip();
+        scheduler.show_now();
+
+        assert_eq!(scheduler.snapshot().kind, BreakKind::Long);
+    }
+
+    #[test]
     fn format_clock_uses_minutes_and_seconds() {
         assert_eq!(format_clock(5), "00:05");
         assert_eq!(format_clock(65), "01:05");
@@ -316,5 +368,51 @@ mod tests {
         scheduler.tick(now + Duration::from_secs(3));
 
         assert_eq!(scheduler.snapshot().next_in, before - 1);
+    }
+
+    #[test]
+    fn a_duration_change_does_not_reset_the_interval() {
+        let mut scheduler = scheduler();
+        let before = scheduler.snapshot().next_in;
+        let settings = Settings {
+            microbreak_duration_sec: 45,
+            ..Settings::default()
+        };
+
+        scheduler.update_settings(settings);
+
+        assert_eq!(scheduler.snapshot().next_in, before);
+    }
+
+    #[test]
+    fn a_longer_duration_extends_the_running_break() {
+        let mut scheduler = scheduler();
+        scheduler.show_now();
+        scheduler.tick(SystemTime::now());
+
+        let before = scheduler.snapshot();
+        let settings = Settings {
+            microbreak_duration_sec: before.duration + 10,
+            ..Settings::default()
+        };
+
+        scheduler.update_settings(settings);
+
+        let after = scheduler.snapshot();
+        assert_eq!(after.duration, before.duration + 10);
+        assert_eq!(after.remaining, before.remaining + 10);
+    }
+
+    #[test]
+    fn revision_advances_on_tick_and_actions() {
+        let mut scheduler = scheduler();
+        let start = scheduler.snapshot().revision;
+
+        scheduler.tick(SystemTime::now());
+        let after_tick = scheduler.snapshot().revision;
+        assert!(after_tick > start);
+
+        scheduler.show_now();
+        assert!(scheduler.snapshot().revision > after_tick);
     }
 }

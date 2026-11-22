@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Download, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUpdater } from "@/lib/updater";
@@ -12,6 +13,7 @@ export function UpdateBanner() {
     install,
     dismiss,
   } = useUpdater();
+  const [announcement, setAnnouncement] = useState("");
 
   const busy = status === "downloading" || status === "installing";
   const visible =
@@ -19,6 +21,22 @@ export function UpdateBanner() {
     (status === "available" ||
       busy ||
       (status === "error" && version !== null));
+
+  useEffect(() => {
+    if (status === "available") {
+      setAnnouncement(`ScreenBreak ${version} is ready to install.`);
+    } else if (status === "installing") {
+      setAnnouncement("Installing the update. The app will restart.");
+    } else if (status === "error") {
+      setAnnouncement(error ?? "The update failed.");
+    } else if (
+      status === "downloading" &&
+      progress !== null &&
+      progress % 25 === 0
+    ) {
+      setAnnouncement(`Downloading the update, ${progress} percent.`);
+    }
+  }, [status, version, progress, error]);
 
   if (!visible) return null;
 
@@ -32,11 +50,11 @@ export function UpdateBanner() {
           : "Update available";
 
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      className="fixed bottom-5 right-5 z-40 w-[320px] rounded-[18px] border border-border/70 bg-popover/95 p-4 text-popover-foreground shadow-2xl backdrop-blur-xl"
-    >
+    <div className="fixed bottom-5 right-5 z-40 w-[320px] rounded-[18px] border border-border/70 bg-popover/95 p-4 text-popover-foreground shadow-2xl backdrop-blur-xl">
+      <span className="sr-only" role="status" aria-live="polite">
+        {announcement}
+      </span>
+
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-semibold">{title}</p>
