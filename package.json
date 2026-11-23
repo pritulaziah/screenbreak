@@ -11,7 +11,7 @@
     "build": "tsc && tsc -p tsconfig.node.json --noEmit && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "test": "node --test scripts && vitest run",
+    "test": "node --test \"scripts/**/*.test.mjs\" && vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
